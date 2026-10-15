@@ -20,6 +20,7 @@ https://apps.powerapps.com/play/e/73f52288-2cbd-e6f3-b14d-6e12b85e8fdb/app/d2029
 - ⏱ Configurable shot clock (15/30/45/60s). Expiry forfeits the turn.
 - 👑 Queen (red): hard question → pocket → **cover** with another coin next turn (+20 bonus) or she returns.
 - 🌐 Online rooms: host gets a 6-letter code, guest joins from another laptop, board mirrors every ~2s.
+- 🎲 **Classic Flick mode**: real physics carrom — drag the striker back and release, cushions, fouls, Queen + cover (same device).
 - Same-laptop 2-player, pause/restart, keyboard + tablet friendly.
 
 ## Repo map

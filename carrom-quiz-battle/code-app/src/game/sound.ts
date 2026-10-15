@@ -43,6 +43,14 @@ export const sound = {
     beep(190, 70, 0, 'triangle', 0.16);
     beep(340, 60, 30, 'triangle', 0.1);
   },
+  /** Coin-on-coin click. */
+  click() {
+    beep(2400, 35, 0, 'square', 0.04);
+  },
+  /** Cushion thud. */
+  thud() {
+    beep(140, 60, 0, 'sine', 0.08);
+  },
   /** Coin rattling into the pocket. */
   rattle() {
     beep(880, 60, 0, 'triangle', 0.1);

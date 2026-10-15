@@ -186,6 +186,53 @@ export async function joinSessionAsPlayer2(rowId: number, name: string): Promise
   unwrap(await CarromSessionsService.update(String(rowId), { Player2Name: name }), 'Joining session');
 }
 
+/** Classic Flick sessions: same lists, mode tagged in StateJson. */
+export async function createClassicSession(
+  sessionId: string,
+  playerNames: [string, string],
+  target: number,
+): Promise<string> {
+  const created = unwrap(
+    await CarromSessionsService.create({
+      Title: `Classic ${sessionId}`,
+      SessionId: sessionId,
+      Player1Name: playerNames[0],
+      Player2Name: playerNames[1],
+      CurrentPlayer: 1,
+      Player1Score: 0,
+      Player2Score: 0,
+      GameStatus: 'inProgress',
+      StartedAt: new Date().toISOString(),
+      Winner: 0,
+      WinnerComputed: false,
+      StateJson: JSON.stringify({ mode: 'classic', targetScore: target }),
+    }),
+    'Creating classic session',
+  );
+  if (typeof created.ID !== 'number') throw new SpError('Creating session failed (no item ID).');
+  return String(created.ID);
+}
+
+export async function patchClassicSession(
+  rowId: string,
+  state: import('./game/classic').ClassicState,
+): Promise<void> {
+  const finished = state.finished;
+  unwrap(
+    await CarromSessionsService.update(rowId, {
+      CurrentPlayer: state.currentPlayer,
+      Player1Score: state.scores[0],
+      Player2Score: state.scores[1],
+      GameStatus: finished ? 'completed' : 'inProgress',
+      StateJson: JSON.stringify({ mode: 'classic', ...state }),
+      ...(finished
+        ? { CompletedAt: new Date().toISOString(), Winner: state.winner ?? 0 }
+        : {}),
+    }),
+    'Saving classic session',
+  );
+}
+
 export interface ChampionRow {
   sessionId: string;
   p1: string;

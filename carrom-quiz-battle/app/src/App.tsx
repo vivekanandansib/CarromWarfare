@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Board, { missMidpoint, nearestPocket, waypointFor, type PocketAnim } from './components/Board';
+import ClassicMode from './components/ClassicMode';
 import { Confetti, FxLayer, PlayerPanel, QueenBadge, Toast } from './components/Panels';
 import type { Burst, Floater } from './components/Panels';
 import QuestionDialog from './components/QuestionDialog';
@@ -63,6 +64,7 @@ export default function App() {
   const [canResume, setCanResume] = useState(hasSavedGame);
   const [clockSecs, setClockSecs] = useState(30);
   const [timeLeft, setTimeLeft] = useState(30);
+  const [classic, setClassic] = useState<{ names: [string, string]; target: number } | null>(null);
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [pocketFlash, setPocketFlash] = useState<CoinPos | null>(null);
   const [bursts, setBursts] = useState<Burst[]>([]);
@@ -108,7 +110,17 @@ export default function App() {
     setCanResume(true);
   };
 
-  const startGame = (p1: string, p2: string, target: number, clock: number) => {
+  const startGame = (p1: string, p2: string, target: number, clock: number, mode: 'quiz' | 'classic') => {
+    setClockSecs(clock);
+    setTimeLeft(clock);
+    expiredRef.current = false;
+    if (mode === 'classic') {
+      setClassic({ names: [p1, p2], target });
+      setGame(null);
+      setError(null);
+      return;
+    }
+    setClassic(null);
     const fresh = new QuestionBank(SAMPLE_QUESTIONS);
     if (fresh.size === 0) {
       setError('No active questions available. Add questions to the bank and retry.');
@@ -121,9 +133,6 @@ export default function App() {
       setPocketAnim(null);
       setPaused(false);
       setError(null);
-      setClockSecs(clock);
-      setTimeLeft(clock);
-      expiredRef.current = false;
       persist(g);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not start game');
@@ -326,10 +335,24 @@ export default function App() {
 
   const restart = () => {
     if (!game) return;
-    startGame(game.playerNames[0], game.playerNames[1], game.targetScore, clockSecs);
+    startGame(game.playerNames[0], game.playerNames[1], game.targetScore, clockSecs, 'quiz');
   };
 
   // ---- screens ----
+  if (classic) {
+    return (
+      <ClassicMode
+        playerNames={classic.names}
+        targetScore={classic.target}
+        clockSecs={clockSecs}
+        onExit={() => {
+          setClassic(null);
+          setGame(null);
+        }}
+      />
+    );
+  }
+
   if (!game) {
     return (
       <div className="app">

@@ -245,3 +245,16 @@ transport — no new columns, no admin, no custom server:
 - Known limits: no presence/heartbeat (a closed laptop just stops moving — the other
   waits), no rematch in-room (Play again returns to the menu for a fresh room),
   one guest per room (a second join overwrites the seat).
+
+## 13. Classic Flick — real carrom mode (same device)
+
+A second game next to Quiz Battle: slingshot striker, live 2D physics
+(`game/physics.ts`: friction, elastic coin collisions, cushion restitution, pocket
+capture, striker fouls), turn rules (`game/classic.ts`: pocket-retains-turn,
+foul forfeits points, Queen + cover, target/board-clear wins — all unit-tested).
+
+- Shots are real: drag back and release (pointer) or arrows + Enter (keyboard).
+- Same look, sounds, clock, bursts, and SharePoint audit rows (sessions, coin
+  events; attempts are quiz-only) with `mode: 'classic'` tagged in `StateJson`.
+- Classic is **same-device only** in v1 — physics positions don't travel over the
+  polling transport yet. Online rooms remain quiz-mode.

@@ -3,7 +3,11 @@ import Board, { missMidpoint, nearestPocket, waypointFor } from './components/Bo
 import type { PocketAnim } from './components/Board';
 import { Confetti, FxLayer, PlayerPanel, QueenBadge, Toast } from './components/Panels';
 import type { Burst, Floater } from './components/Panels';
+import ClassicMode from './components/ClassicMode';
+import type { ClassicShotInfo } from './components/ClassicMode';
 import QuestionDialog from './components/QuestionDialog';
+import { createGameEvent } from './game/events';
+import type { ClassicState } from './game/classic';
 import {
   answerQuestion,
   completeAnimation,
@@ -22,12 +26,14 @@ import type { CoinPos, GameEvent, GameState, PlayerNumber, ShotType } from './ga
 import { QuestionBank } from './game/questions';
 import { sound } from './game/sound';
 import {
+  createClassicSession,
   createSessionRow,
   fetchSessionRow,
   joinSessionAsPlayer2,
   listOpenSessions,
   listTopChampions,
   loadActiveQuestions,
+  patchClassicSession,
   patchSessionRow,
   saveAttempt,
   saveCoinEvent,
@@ -126,6 +132,9 @@ export default function App() {
   const [guestJoined, setGuestJoined] = useState(false);
   const [champs, setChamps] = useState<ChampionRow[] | null>(null);
   const [champsLoading, setChampsLoading] = useState(false);
+  // Classic tab (same-device flick mode) + its session row
+  const [appTab, setAppTab] = useState<'quiz' | 'classic'>('quiz');
+  const classicRowId = useRef<string | null>(null);
   const lastWrittenRef = useRef<string | null>(null);
   const lastSeenRef = useRef<string | null>(null);
   const gameRef = useRef<GameState | null>(null);
@@ -331,6 +340,60 @@ export default function App() {
         setChampsLoading(false);
       }
     })();
+  };
+
+  /** SharePoint sink for Classic Flick shots (same lists, mode tagged in StateJson). */
+  const classicSink = {
+    onSessionStart: (s: ClassicState) => {
+      classicRowId.current = null;
+      void (async () => {
+        try {
+          classicRowId.current = await createClassicSession(s.sessionId, s.playerNames, s.targetScore);
+        } catch (e) {
+          setSpError(e instanceof Error ? e.message : 'Could not create the classic session row.');
+        }
+      })();
+    },
+    onShot: (s: ClassicState, info: ClassicShotInfo) => {
+      void (async () => {
+        try {
+          const status = s.finished ? 'completed' : 'inProgress';
+          const base = {
+            score: [...s.scores] as [number, number],
+            currentPlayer: s.currentPlayer,
+            gameStatus: status as 'inProgress' | 'completed',
+          };
+          for (const id of info.pocketedNow) {
+            if (id === 'Q') {
+              if (info.queenEvent === 'pending') {
+                await saveCoinEvent(
+                  createGameEvent(s.sessionId, 'coinPocketed', info.shooter, { coinId: 'Q', pointsAwarded: 0, ...base }),
+                );
+              } else if (info.queenEvent === 'secured') {
+                await saveCoinEvent(
+                  createGameEvent(s.sessionId, 'coverSecured', info.shooter, { coinId: 'Q', pointsAwarded: 20, ...base }),
+                );
+              } else if (info.queenEvent === 'returned') {
+                await saveCoinEvent(
+                  createGameEvent(s.sessionId, 'coverFailed', info.shooter, { coinId: 'Q', pointsAwarded: 0, ...base }),
+                );
+              }
+            } else {
+              await saveCoinEvent(
+                createGameEvent(s.sessionId, 'coinPocketed', info.shooter, { coinId: id, pointsAwarded: 10, ...base }),
+              );
+            }
+          }
+          if (classicRowId.current) await patchClassicSession(classicRowId.current, s);
+        } catch (e) {
+          setSpError(
+            e instanceof Error
+              ? `${e.message} The game continues — progress may not be saved.`
+              : 'SharePoint save failed.',
+          );
+        }
+      })();
+    },
   };
 
   const startOnlineHost = () => {
@@ -597,6 +660,17 @@ export default function App() {
   }
 
   if (!game) {
+    if (appTab === 'classic') {
+      return (
+        <ClassicMode
+          playerNames={[p1.trim() || 'Asha', p2.trim() || 'Ravi']}
+          targetScore={target > 0 ? target : 50}
+          clockSecs={clockSecs}
+          sink={classicSink}
+          onExit={() => setAppTab('quiz')}
+        />
+      );
+    }
     return (
       <div className="app">
         {spError && (
@@ -608,6 +682,21 @@ export default function App() {
           <div className="hero">
             <h1>🎯 Carrom Quiz Battle</h1>
             <p className="tagline">Pocket coins with your brain. Two players, one board, quiz-powered shots.</p>
+          </div>
+          <div className="card">
+            <div className="shot-grid mode-pick" role="radiogroup" aria-label="Game">
+              <button
+                role="radio"
+                aria-checked={true}
+                className="shot active"
+                onClick={() => undefined}
+              >
+                🎯 Quiz Battle
+              </button>
+              <button role="radio" aria-checked={false} className="shot" onClick={() => setAppTab('classic')}>
+                🎲 Classic Flick
+              </button>
+            </div>
           </div>
           <div className="card">
             <h2>New game</h2>

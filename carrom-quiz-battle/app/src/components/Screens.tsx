@@ -7,13 +7,14 @@ export function StartScreen({
   onResume,
 }: {
   canResume: boolean;
-  onStart: (p1: string, p2: string, target: number, clock: number) => void;
+  onStart: (p1: string, p2: string, target: number, clock: number, mode: 'quiz' | 'classic') => void;
   onResume: () => void;
 }) {
   const [p1, setP1] = useState('Asha');
   const [p2, setP2] = useState('Ravi');
   const [target, setTarget] = useState(50);
   const [clock, setClock] = useState(30);
+  const [mode, setMode] = useState<'quiz' | 'classic'>('quiz');
   const valid = p1.trim() !== '' && p2.trim() !== '' && target > 0;
 
   return (
@@ -24,6 +25,27 @@ export function StartScreen({
       </div>
       <div className="card">
         <h2>New game</h2>
+        <div className="shot-grid mode-pick" role="radiogroup" aria-label="Game mode">
+          {(
+            [
+              ['quiz', '🎯 Quiz Battle'],
+              ['classic', '🎲 Classic Flick'],
+            ] as const
+          ).map(([m, label]) => (
+            <button
+              key={m}
+              role="radio"
+              aria-checked={mode === m}
+              className={`shot${mode === m ? ' active' : ''}`}
+              onClick={() => setMode(m)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {mode === 'classic' && (
+          <p className="muted">Real flick physics on this device — no questions, just carrom.</p>
+        )}
         <div className="form-row">
           <label>
             Player 1<input value={p1} onChange={(e) => setP1(e.target.value)} maxLength={20} aria-label="Player 1 name" />
@@ -54,7 +76,7 @@ export function StartScreen({
           </label>
         </div>
         <div className="btn-row">
-          <button className="btn primary" disabled={!valid} onClick={() => onStart(p1.trim(), p2.trim(), target, clock)}>
+          <button className="btn primary" disabled={!valid} onClick={() => onStart(p1.trim(), p2.trim(), target, clock, mode)}>
             Start battle
           </button>
           {canResume && (
