@@ -1,0 +1,9 @@
+{
+    "extends": "./node_modules/pcf-scripts/tsconfig_base.json",
+    "compilerOptions": {
+        "skipLibCheck": true,
+        "types": ["react", "react-dom", "powerapps-component-framework"],
+        "typeRoots": ["node_modules/@types"],
+        "forceConsistentCasingInFileNames": true
+    }
+}

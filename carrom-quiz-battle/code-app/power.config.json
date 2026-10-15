@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "appId": "d202983a-b850-40ab-83e0-314f2a90ecee",
+  "appDisplayName": "Carrom Quiz Battle",
+  "region": "prod",
+  "environmentId": "73f52288-2cbd-e6f3-b14d-6e12b85e8fdb",
+  "description": "Two-player quiz carrom battle",
+  "buildPath": "./dist",
+  "buildEntryPoint": "index.html",
+  "localAppUrl": "http://localhost:3000",
+  "logoPath": "Default",
+  "connectionReferences": {
+    "0877de11-dda7-4ffd-8ce7-6c70f13c21ec": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+      "displayName": "SharePoint",
+      "dataSources": [
+        "carromquestions",
+        "carromsessions",
+        "carromattempts",
+        "carromcoinevents"
+      ],
+      "dataSets": {
+        "https://signatechservices0.sharepoint.com/sites/Powerapps": {
+          "dataSources": {
+            "carromquestions": {
+              "tableName": "CarromQuestions"
+            },
+            "carromsessions": {
+              "tableName": "CarromSessions"
+            },
+            "carromattempts": {
+              "tableName": "CarromAttempts"
+            },
+            "carromcoinevents": {
+              "tableName": "CarromCoinEvents"
+            }
+          }
+        }
+      }
+    }
+  },
+  "databaseReferences": {}
+}

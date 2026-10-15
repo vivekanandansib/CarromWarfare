@@ -1,0 +1,31 @@
+# Dependencies / build outputs — never commit
+node_modules/
+dist/
+out/
+bin/
+obj/
+.next/
+
+# Logs
+*.log
+npm-debug.log*
+.npm/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+*.code-workspace
+
+# Power Platform local auth + temp wrappers
+obj/PowerAppsTools*/
+*.binlog
+*.cdsproj.user
+
+# Env / secrets — NEVER commit credentials, PATs, certificates or .env files
+.env
+.env.*
+*.pfx
+*.pem
+*.key
+secrets.json

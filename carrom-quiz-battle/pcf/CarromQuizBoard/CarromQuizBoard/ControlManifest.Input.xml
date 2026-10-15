@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <control namespace="CarromBattle" constructor="CarromQuizBoard" version="1.0.0" display-name-key="CarromQuizBoard" description-key="Carrom Quiz Battle: two-player turn-based quiz carrom board" control-type="standard" >
+    <external-service-usage enabled="false">
+    </external-service-usage>
+    <!-- Inputs (bound): Canvas App writes these; control re-renders in updateView -->
+    <property name="QuestionsJson" display-name-key="Questions JSON" description-key="JSON array of questions (id, text, category, difficulty, options[4], correctIndex, hint). Invalid rows are skipped." of-type="SingleLine.Text" usage="bound" required="true" />
+    <property name="SessionConfigJson" display-name-key="Session Config JSON" description-key='JSON session config: { sessionId, player1, player2, targetScore, pointsPerCoin?, queenBonus? }' of-type="SingleLine.Text" usage="bound" required="true" />
+    <property name="InitialGameStateJson" display-name-key="Initial Game State JSON" description-key="Optional: serialized GameState to resume (from CarromSessions snapshot). Empty starts a new game." of-type="SingleLine.Text" usage="bound" required="false" />
+    <!-- Outputs (bound): control calls notifyOutputChanged(); Canvas App reads these in OnChange -->
+    <property name="GameEventJson" display-name-key="Game Event JSON" description-key="Output: latest GameEvent v1.0 JSON (schemaVersion, eventId, sessionId, eventType, playerNumber, coinId, questionId, score, currentPlayer, gameStatus)" of-type="SingleLine.Text" usage="bound" />
+    <property name="EventSequence" display-name-key="Event Sequence" description-key="Output: monotonic counter incremented per game event. Canvas App processes GameEventJson when this changes." of-type="Whole.None" usage="bound" />
+    <resources>
+      <code path="index.ts" order="1"/>
+      <platform-library name="React" version="16.14.0" />
+      <css path="css\carrom.css" order="1" />
+    </resources>
+  </control>
+</manifest>
