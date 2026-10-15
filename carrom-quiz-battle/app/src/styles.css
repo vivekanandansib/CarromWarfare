@@ -28,9 +28,17 @@ body {
 .topbar {
   display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
   justify-content: space-between; margin-bottom: 10px;
+  position: sticky; top: 0; z-index: 30;
+  background: rgba(23, 14, 6, 0.88); backdrop-filter: blur(6px);
+  padding: 8px 12px; border-radius: 0 0 12px 12px;
 }
 .logo { color: #f7e8c8; font-size: 1.35rem; margin: 0; }
 .top-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.clock-pill {
+  background: #241a0e; border: 1px solid #6b4c26; color: #f7e8c8;
+  font-weight: 800; padding: 6px 12px; border-radius: 999px; white-space: nowrap;
+}
+.clock-pill.low { border-color: #ff9a9a; color: #ffb3b3; animation: pulse 1s ease-in-out infinite; }
 
 .queen-badge {
   background: #241a0e; color: #f7e8c8; border: 1px solid #6b4c26;
@@ -68,6 +76,10 @@ body {
 .pocket-flyer.black { background: #26211c; border: 2px solid #000; }
 .pocket-flyer.queen { background: var(--queen); border: 2px solid #fff; }
 .board-hint { color: #f7e8c8; text-align: center; min-height: 1.6em; }
+.board-status {
+  color: var(--gold); text-align: center; font-size: 0.9rem; font-weight: 600;
+  margin: 2px 0 0; min-height: 1.4em;
+}
 .clock {
   position: relative; max-width: 640px; margin: 6px auto 0; padding: 6px 12px;
   background: #241a0e; border: 1px solid #6b4c26; border-radius: 10px;

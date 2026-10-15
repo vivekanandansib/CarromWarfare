@@ -263,7 +263,7 @@ export async function writeClassicSnapshot(rowId: string, snap: ClassicSnapshot)
       Player1Score: snap.rules.scores[0],
       Player2Score: snap.rules.scores[1],
       GameStatus: finished ? 'completed' : 'inProgress',
-      StateJson: serializeClassicSnapshot(snap.rules, snap.bodies, snap.strikerX),
+      StateJson: serializeClassicSnapshot(snap.rules, snap.bodies, snap.strikerX, snap.lobby === true),
       ...(finished
         ? { CompletedAt: new Date().toISOString(), Winner: snap.rules.winner ?? 0 }
         : {}),

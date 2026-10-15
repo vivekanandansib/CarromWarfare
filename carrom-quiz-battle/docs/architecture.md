@@ -246,12 +246,20 @@ transport — no new columns, no admin, no custom server:
   waits), no rematch in-room (Play again returns to the menu for a fresh room),
   one guest per room (a second join overwrites the seat).
 
-## 13. Classic Flick — real carrom mode (same device)
+## 13. Classic Flick — real carrom mode (same device + online)
 
 A second game next to Quiz Battle: slingshot striker, live 2D physics
 (`game/physics.ts`: friction, elastic coin collisions, cushion restitution, pocket
-capture, striker fouls), turn rules (`game/classic.ts`: pocket-retains-turn,
-foul forfeits points, Queen + cover, target/board-clear wins — all unit-tested).
+capture, striker fouls), turn rules (`game/classic.ts`, ICF-inspired, house-scored),
+all unit-tested.
+
+Enforced laws: assigned colors (P1 White breaks, P2 Black) · break must touch a coin
+(15s default clock mirrors the ICF stroke limit) · queen needs a prior own coin,
+same-or-next-stroke cover (same-stroke queen+own = covered at once) · striker fouls
+incur dues (a pocketed coin returns immediately, else owed against the next pocket) ·
+opponent coins stay down without points · board-clear win needs a secured queen.
+House scoring stays per-pocket (+10, Queen +20) instead of ICF board scoring; the
+3-attempt break and umpire-placed dues are simplified (single attempt, instant placing).
 
 - Shots are real: drag back and release (pointer) or arrows + Enter (keyboard).
 - Same look, sounds, clock, bursts, and SharePoint audit rows (sessions, coin

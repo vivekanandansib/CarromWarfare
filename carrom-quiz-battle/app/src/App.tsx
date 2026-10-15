@@ -395,6 +395,15 @@ export default function App() {
       )}
       <header className="topbar">
         <h1 className="logo">🎯 Carrom Quiz Battle</h1>
+        {(game.phase === 'ready' || game.phase === 'asking') && !paused && (
+          <span
+            className={`clock-pill${timeLeft <= 5 ? ' low' : ''}`}
+            role="timer"
+            aria-label={`${timeLeft} seconds left to strike`}
+          >
+            ⏱ {timeLeft}s
+          </span>
+        )}
         <div className="top-actions">
           <QueenBadge queenState={game.queenState} />
           <span className="theme-pick" role="radiogroup" aria-label="Board theme">
@@ -454,16 +463,6 @@ export default function App() {
                     ? `${game.playerNames[me - 1]} must cover the Queen — pick another coin!`
                     : `${game.playerNames[me - 1]}, pick any available coin. Pocketed ${pocketed}/19.`}
           </p>
-          {(game.phase === 'ready' || game.phase === 'asking') && !paused && (
-            <div
-              className={`clock${timeLeft <= 5 ? ' low' : ''}`}
-              role="timer"
-              aria-label={`${timeLeft} seconds left to strike`}
-            >
-              <div className="clock-bar" style={{ width: `${(timeLeft / clockSecs) * 100}%` }} />
-              <span>⏱ {timeLeft}s to strike</span>
-            </div>
-          )}
         </div>
 
         <aside className="side-col">

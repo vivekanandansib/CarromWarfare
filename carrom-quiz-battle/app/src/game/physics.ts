@@ -51,6 +51,8 @@ function nearPocket(p: Vec): boolean {
 export interface StepEvents {
   pocketed: string[];
   strikerFoul: boolean;
+  /** Striker touched at least one coin this step batch (break rule). */
+  strikerTouched: boolean;
   clicks: number; // collision count (for sound)
   cushions: number;
 }
@@ -62,7 +64,7 @@ export function stepBodies(
   dt: number,
   friction: number = COIN_FRICTION,
 ): StepEvents {
-  const ev: StepEvents = { pocketed: [], strikerFoul: false, clicks: 0, cushions: 0 };
+  const ev: StepEvents = { pocketed: [], strikerFoul: false, strikerTouched: false, clicks: 0, cushions: 0 };
   const sub = 2;
   const h = Math.min(dt, 0.033) / sub;
   for (let s = 0; s < sub; s++) {
@@ -133,6 +135,7 @@ export function stepBodies(
           const rvy = b.vel.y - a.vel.y;
           const rel = rvx * nx + rvy * ny;
           if (rel < 0) {
+            if (a.id === strikerId || b.id === strikerId) ev.strikerTouched = true;
             const impulse = (-(1 + REST_COIN) * rel) / 2;
             a.vel.x -= impulse * nx;
             a.vel.y -= impulse * ny;

@@ -7,6 +7,7 @@ import ClassicMode from './components/ClassicMode';
 import type { ClassicShotInfo } from './components/ClassicMode';
 import QuestionDialog from './components/QuestionDialog';
 import { createGameEvent } from './game/events';
+import { openingSnapshot } from './game/classic';
 import type { ClassicState } from './game/classic';
 import {
   answerQuestion,
@@ -429,8 +430,26 @@ export default function App() {
   const [classicJoinError, setClassicJoinError] = useState<string | null>(null);
   const [classicJoining, setClassicJoining] = useState(false);
 
+  // Classic lobby: host waits with the code before starting; guest waits for Start.
+  const [classicRoom, setClassicRoom] = useState<null | {
+    sessionId: string;
+    rowId: string;
+    code: string;
+  }>(null);
+  const [classicGuest, setClassicGuest] = useState<string | null>(null);
+  const [classicWaiting, setClassicWaiting] = useState<null | {
+    sessionId: string;
+    rowId: string;
+    code: string;
+  }>(null);
+  const [guestSnap, setGuestSnap] = useState<import('./game/classic').ClassicSnapshot | null>(null);
+  const [copied, setCopied] = useState(false);
+
   const startClassicLocal = () => {
     setClassicJoinError(null);
+    setClassicRoom(null);
+    setClassicWaiting(null);
+    setGuestSnap(null);
     setClassicGame({ seat: null, sessionId: '', rowId: '', code: '', myName: '' });
   };
 
@@ -441,18 +460,74 @@ export default function App() {
     void (async () => {
       try {
         const rowId = await createClassicSession(sessionId, [p1.trim(), ''], target);
-        setClassicGame({
-          seat: 1,
-          sessionId,
-          rowId,
-          code: roomCodeForSession(sessionId),
-          myName: p1.trim(),
-        });
+        const opening = openingSnapshot(sessionId, [p1.trim(), 'Player 2'], target, 200, true);
+        await writeClassicSnapshot(rowId, opening);
+        setClassicRoom({ sessionId, rowId, code: roomCodeForSession(sessionId) });
+        setClassicGuest(null);
       } catch (e) {
         setSpError(e instanceof Error ? e.message : 'Could not host the classic room.');
       }
     })();
   };
+
+  const copyInvite = async (code: string) => {
+    const text = `Join my Carrom Flick room! Code: ${code} — ${window.location.href}`;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Host lobby: watch for the guest, then Start hands over to the live game.
+  useEffect(() => {
+    if (!classicRoom || classicGame) return;
+    const t = window.setInterval(() => {
+      void (async () => {
+        try {
+          const row = await fetchSessionRow(classicRoom.sessionId);
+          if (row?.Player2Name?.trim()) setClassicGuest(row.Player2Name.trim());
+        } catch {
+          /* retry */
+        }
+      })();
+    }, 2000);
+    return () => window.clearInterval(t);
+  }, [classicRoom, classicGame]);
+
+  // Guest waiting room: start the game the moment the host presses Start.
+  useEffect(() => {
+    if (!classicWaiting || classicGame) return;
+    const t = window.setInterval(() => {
+      void (async () => {
+        try {
+          const snap = await readClassicSnapshot(classicWaiting.sessionId);
+          if (snap && !snap.lobby) {
+            setGuestSnap(snap);
+            setClassicGame({
+              seat: 2,
+              sessionId: classicWaiting.sessionId,
+              rowId: classicWaiting.rowId,
+              code: classicWaiting.code,
+              myName: p1.trim() || 'Guest',
+            });
+            setClassicWaiting(null);
+          }
+        } catch {
+          /* retry */
+        }
+      })();
+    }, 2000);
+    return () => window.clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classicWaiting, classicGame]);
 
   const joinClassic = () => {
     if (!p1.trim() || classicJoinCode.trim().length < 6) return;
@@ -474,6 +549,17 @@ export default function App() {
         await joinSessionAsPlayer2(found.ID, p1.trim());
         const snap = await readClassicSnapshot(found.SessionId);
         if (!snap) throw new Error('Room found, but the board is not ready yet — retry in a moment.');
+        if (snap.lobby) {
+          // Host hasn't started yet — wait in the waiting room.
+          setClassicWaiting({
+            sessionId: found.SessionId,
+            rowId: String(found.ID),
+            code: roomCodeForSession(found.SessionId),
+          });
+          flash('Room joined — waiting for the host to start…', 'info');
+          return;
+        }
+        setGuestSnap(snap);
         setClassicGame({
           seat: 2,
           sessionId: found.SessionId,
@@ -755,6 +841,83 @@ export default function App() {
   if (!game) {
     if (appTab === 'classic') {
       if (!classicGame) {
+        // Host lobby (room created, game not started) or guest waiting room.
+        if (classicRoom || classicWaiting) {
+          const hosting = !!classicRoom;
+          const code = hosting ? classicRoom.code : classicWaiting!.code;
+          const guestHere = hosting ? classicGuest : null;
+          return (
+            <div className="app">
+              <div className="screen">
+                <div className="hero">
+                  <h1>🎲 Classic Flick</h1>
+                  <p className="tagline">
+                    {hosting ? 'Share the code, then start when ready.' : 'Waiting for the host to start…'}
+                  </p>
+                </div>
+                <div className="card results">
+                  <p className="muted">Room code</p>
+                  <p>
+                    <strong className="room-code">{code}</strong>
+                  </p>
+                  {hosting ? (
+                    <>
+                      <div className="btn-row center">
+                        <button className="btn" onClick={() => void copyInvite(code)}>
+                          {copied ? '✓ Copied!' : '⧉ Copy invite'}
+                        </button>
+                      </div>
+                      <p aria-live="polite">
+                        {guestHere ? `✅ ${guestHere} joined!` : 'Waiting for Player 2…'}
+                      </p>
+                      <div className="btn-row center">
+                        <button
+                          className="btn primary"
+                          onClick={() =>
+                            setClassicGame({
+                              seat: 1,
+                              sessionId: classicRoom.sessionId,
+                              rowId: classicRoom.rowId,
+                              code: classicRoom.code,
+                              myName: p1.trim() || 'Host',
+                            })
+                          }
+                          autoFocus
+                        >
+                          ▶ Start game
+                        </button>
+                        <button
+                          className="btn"
+                          onClick={() => {
+                            setClassicRoom(null);
+                            setClassicGuest(null);
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p aria-live="polite">The game begins when the host presses Start.</p>
+                      <div className="btn-row center">
+                        <button
+                          className="btn"
+                          onClick={() => {
+                            setClassicWaiting(null);
+                            setGuestSnap(null);
+                          }}
+                        >
+                          Leave
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        }
         return (
           <div className="app">
             {spError && (
@@ -824,6 +987,10 @@ export default function App() {
             sink={classicSink}
             onExit={() => {
               setClassicGame(null);
+              setClassicRoom(null);
+              setClassicWaiting(null);
+              setGuestSnap(null);
+              setClassicGuest(null);
               setAppTab('quiz');
             }}
           />
@@ -841,6 +1008,8 @@ export default function App() {
           targetScore={target > 0 ? target : 50}
           clockSecs={clockSecs}
           sink={{ onShot: classicOnlineShot }}
+          initialSnapshot={classicGame.seat === 2 ? guestSnap : null}
+          publishOpening={classicGame.seat === 1}
           net={{
             mySeat: classicGame.seat,
             myName: classicGame.myName,
@@ -854,6 +1023,10 @@ export default function App() {
           }}
           onExit={() => {
             setClassicGame(null);
+            setClassicRoom(null);
+            setClassicWaiting(null);
+            setGuestSnap(null);
+            setClassicGuest(null);
             setAppTab('quiz');
           }}
         />
@@ -1087,6 +1260,17 @@ export default function App() {
       )}
       <header className="topbar">
         <h1 className="logo">🎯 Carrom Quiz Battle</h1>
+        {(game.phase === 'ready' || game.phase === 'asking') &&
+          !paused &&
+          (mode === 'local' || game.currentPlayer === mySeat) && (
+            <span
+              className={`clock-pill${timeLeft <= 5 ? ' low' : ''}`}
+              role="timer"
+              aria-label={`${timeLeft} seconds left to strike`}
+            >
+              ⏱ {timeLeft}s
+            </span>
+          )}
         <div className="top-actions">
           <QueenBadge queenState={game.queenState} />
           <span className="theme-pick" role="radiogroup" aria-label="Board theme">
@@ -1148,16 +1332,6 @@ export default function App() {
                       ? `${game.playerNames[me - 1]} must cover the Queen — pick another coin!`
                       : `${game.playerNames[me - 1]}, pick any available coin. Pocketed ${pocketed}/19.`}
           </p>
-          {(game.phase === 'ready' || game.phase === 'asking') && !paused && isMyTurn && (
-            <div
-              className={`clock${timeLeft <= 5 ? ' low' : ''}`}
-              role="timer"
-              aria-label={`${timeLeft} seconds left to strike`}
-            >
-              <div className="clock-bar" style={{ width: `${(timeLeft / clockSecs) * 100}%` }} />
-              <span>⏱ {timeLeft}s to strike</span>
-            </div>
-          )}
         </div>
 
         <aside className="side-col">

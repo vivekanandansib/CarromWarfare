@@ -9,6 +9,7 @@ export function PlayerPanel({
   isTurn,
   mustCover,
   target,
+  tag,
 }: {
   name: string;
   score: number;
@@ -16,6 +17,7 @@ export function PlayerPanel({
   isTurn: boolean;
   mustCover: boolean;
   target: number;
+  tag?: string;
 }) {
   return (
     <section className={`player${isTurn ? ' turn' : ''}`} aria-label={`Player ${player}: ${name}`}>
@@ -25,7 +27,10 @@ export function PlayerPanel({
           <div className="player-name">
             {name} {isTurn && <span className="turn-badge">● to play</span>}
           </div>
-          <div className="player-sub">Player {player}</div>
+          <div className="player-sub">
+            Player {player}
+            {tag ? ` · ${tag}` : ''}
+          </div>
         </div>
         <div className="player-score" aria-label={`${name} score ${score}`}>
           {score}
