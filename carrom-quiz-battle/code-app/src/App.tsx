@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import Board, { missMidpoint, nearestPocket, waypointFor } from './components/Board';
 import type { PocketAnim } from './components/Board';
-import { PlayerPanel, QueenBadge, Toast } from './components/Panels';
+import { Confetti, FxLayer, PlayerPanel, QueenBadge, Toast } from './components/Panels';
+import type { Burst, Floater } from './components/Panels';
 import QuestionDialog from './components/QuestionDialog';
 import {
   answerQuestion,
@@ -17,20 +18,21 @@ import {
   serializeState,
 } from './game/engine';
 import { describeRows, findSessionByCode, roomCodeForSession, shouldAdopt } from './game/online';
-import type { PlayerNumber } from './game/types';
+import type { CoinPos, GameEvent, GameState, PlayerNumber, ShotType } from './game/types';
 import { QuestionBank } from './game/questions';
 import { sound } from './game/sound';
-import type { GameEvent, GameState, ShotType } from './game/types';
 import {
   createSessionRow,
   fetchSessionRow,
   joinSessionAsPlayer2,
   listOpenSessions,
+  listTopChampions,
   loadActiveQuestions,
   patchSessionRow,
   saveAttempt,
   saveCoinEvent,
 } from './spGame';
+import type { ChampionRow } from './spGame';
 import './styles.css';
 
 const SHOTS: { id: ShotType; label: string }[] = [
@@ -48,6 +50,19 @@ const SHOT_DESC: Record<ShotType, string> = {
   defensive: 'Easy questions, standard points',
 };
 
+type Theme = 'classic' | 'midnight' | 'royal';
+const THEMES: Theme[] = ['classic', 'midnight', 'royal'];
+
+function loadTheme(): Theme {
+  try {
+    const t = localStorage.getItem('cqb-theme');
+    if (t === 'midnight' || t === 'royal' || t === 'classic') return t;
+  } catch {
+    /* ignore */
+  }
+  return 'classic';
+}
+
 type BankState = { bank: QuestionBank; skipped: number } | null;
 
 export default function App() {
@@ -64,9 +79,40 @@ export default function App() {
   const [target, setTarget] = useState(50);
   const [clockSecs, setClockSecs] = useState(30);
   const [timeLeft, setTimeLeft] = useState(30);
+  const [theme, setTheme] = useState<Theme>(loadTheme);
+  const [pocketFlash, setPocketFlash] = useState<CoinPos | null>(null);
+  const [bursts, setBursts] = useState<Burst[]>([]);
+  const [floaters, setFloaters] = useState<Floater[]>([]);
   const toastTimer = useRef<number>(0);
   const sessionRowId = useRef<string | null>(null);
   const expiredRef = useRef(false);
+  const fxId = useRef(0);
+
+  useEffect(() => {
+    document.body.dataset.theme = theme;
+    try {
+      localStorage.setItem('cqb-theme', theme);
+    } catch {
+      /* ignore */
+    }
+  }, [theme]);
+
+  const spawnBurst = (x: number, y: number) => {
+    const id = ++fxId.current;
+    setBursts((b) => [...b, { id, x, y }]);
+    window.setTimeout(() => setBursts((b) => b.filter((s) => s.id !== id)), 700);
+  };
+
+  const spawnFloater = (text: string, x: number, y: number, bonus = false) => {
+    const id = ++fxId.current;
+    setFloaters((f) => [...f, { id, text, x, y, bonus }]);
+    window.setTimeout(() => setFloaters((f) => f.filter((s) => s.id !== id)), 1350);
+  };
+
+  const flashPocket = (at: CoinPos) => {
+    setPocketFlash(at);
+    window.setTimeout(() => setPocketFlash(null), 600);
+  };
   // Online room state ('local' = same laptop; 'online' = host or guest seat)
   const [mode, setMode] = useState<'local' | 'online'>('local');
   const [playMode, setPlayMode] = useState<'local' | 'host' | 'join'>('local');
@@ -78,6 +124,8 @@ export default function App() {
   const [joinError, setJoinError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const [guestJoined, setGuestJoined] = useState(false);
+  const [champs, setChamps] = useState<ChampionRow[] | null>(null);
+  const [champsLoading, setChampsLoading] = useState(false);
   const lastWrittenRef = useRef<string | null>(null);
   const lastSeenRef = useRef<string | null>(null);
   const gameRef = useRef<GameState | null>(null);
@@ -271,6 +319,20 @@ export default function App() {
     return () => window.clearInterval(t);
   }, [mode, game?.sessionId, flash]);
 
+  const loadChampions = () => {
+    if (champs || champsLoading) return;
+    setChampsLoading(true);
+    void (async () => {
+      try {
+        setChamps(await listTopChampions());
+      } catch {
+        setChamps([]);
+      } finally {
+        setChampsLoading(false);
+      }
+    })();
+  };
+
   const startOnlineHost = () => {
     if (!bankState || !p1.trim() || target <= 0) return;
     const g = createGame({
@@ -375,6 +437,7 @@ export default function App() {
     const coin = game.activeCoinId ? getCoin(game, game.activeCoinId) : undefined;
     if (res.correct) {
       sound.correct();
+      sound.strike();
       setGame(res.state);
       if (coin) {
         const from = { ...coin.pos };
@@ -392,6 +455,7 @@ export default function App() {
       else if (wasCover) flash('Cover incoming — pocket it to secure the Queen!', 'info');
     } else {
       sound.wrong();
+      sound.strike();
       setGame(res.state);
       if (coin) {
         // Miss animation: the coin slides toward the pocket, veers off, stays in play.
@@ -437,9 +501,21 @@ export default function App() {
     }
     try {
       const res = completeAnimation(game);
+      const target = pocketAnim?.to;
       setPocketAnim(null);
       setGame(res.state);
       persist(res.events, res.state);
+      if (target) {
+        flashPocket(target);
+        spawnBurst(target.x, target.y);
+        spawnFloater(
+          `+${res.pointsAwarded}`,
+          target.x,
+          target.y - 24,
+          res.events.some((e) => e.eventType === 'coverSecured') ||
+            (game.activeShot ? SHOT_BONUS[game.activeShot] > 0 : false),
+        );
+      }
       const types = res.events.map((e) => e.eventType);
       if (types.includes('gameFinished')) {
         sound.win();
@@ -447,7 +523,7 @@ export default function App() {
         sound.queen();
         flash(`Queen secured! +${res.pointsAwarded} pts (cover + bonus). You play again.`, 'good');
       } else {
-        sound.pocket();
+        sound.rattle();
         if (res.state.queenState !== 'pendingCover')
           flash(`Pocketed! +${res.pointsAwarded} pts — you retain the turn.`, 'good');
       }
@@ -641,6 +717,31 @@ export default function App() {
             )}
           </div>
           <div className="card">
+            <h2>🏆 Champions</h2>
+            {!champs ? (
+              <div className="btn-row">
+                <button className="btn" onClick={loadChampions} disabled={champsLoading}>
+                  {champsLoading ? 'Loading…' : 'Show leaderboard'}
+                </button>
+              </div>
+            ) : champs.length === 0 ? (
+              <p className="muted">No finished games yet — be the first champion!</p>
+            ) : (
+              <ol className="champs">
+                {champs.map((c) => (
+                  <li key={c.sessionId}>
+                    <strong>
+                      {c.winner === 0 ? 'Draw' : c.winner === 1 ? c.p1 : c.p2}
+                    </strong>{' '}
+                    <span className="muted">
+                      {c.p1} {c.s1} — {c.s2} {c.p2}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+          <div className="card">
             <h2>How to play</h2>
             <ol className="rules">
               <li>Either player may select <strong>any available coin</strong> on their turn.</li>
@@ -661,6 +762,7 @@ export default function App() {
     const [s1, s2] = game.scores;
     return (
       <div className="app">
+        <Confetti pieces={game.winner === 0 ? 30 : 80} />
         {spError && (
           <div className="error-banner" role="alert">
             {spError} <button onClick={() => setSpError(null)} aria-label="Dismiss error">✕</button>
@@ -710,6 +812,19 @@ export default function App() {
         <h1 className="logo">🎯 Carrom Quiz Battle</h1>
         <div className="top-actions">
           <QueenBadge queenState={game.queenState} />
+          <span className="theme-pick" role="radiogroup" aria-label="Board theme">
+            {THEMES.map((t) => (
+              <button
+                key={t}
+                role="radio"
+                aria-checked={theme === t}
+                aria-label={`${t} theme`}
+                title={`${t} theme`}
+                className={`theme-dot ${t}${theme === t ? ' active' : ''}`}
+                onClick={() => setTheme(t)}
+              />
+            ))}
+          </span>
           <button className="btn small" onClick={() => setPaused((p) => !p)} aria-pressed={paused}>
             {paused ? '▶ Resume' : '⏸ Pause'}
           </button>
@@ -726,16 +841,21 @@ export default function App() {
 
       <main className="layout">
         <div className="board-col">
-          <Board
-            coins={game.coins}
-            queenState={game.queenState}
-            activeCoinId={game.activeCoinId}
-            disabled={boardDisabled}
-            pocketAnim={pocketAnim}
-            strikerX={strikerX}
-            onSelect={handleSelect}
-            onAnimDone={handleAnimDone}
-          />
+          <div className="board-stack" style={{ position: 'relative' }}>
+            <Board
+              coins={game.coins}
+              queenState={game.queenState}
+              activeCoinId={game.activeCoinId}
+              disabled={boardDisabled}
+              pocketAnim={pocketAnim}
+              strikerX={strikerX}
+              aimTo={game.phase === 'asking' && isMyTurn && activeCoin ? activeCoin.pos : null}
+              pocketFlash={pocketFlash}
+              onSelect={handleSelect}
+              onAnimDone={handleAnimDone}
+            />
+            <FxLayer bursts={bursts} floaters={floaters} />
+          </div>
           <p className="board-hint" aria-live="polite">
             {paused
               ? 'Paused — press Resume to continue.'

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Board, { missMidpoint, nearestPocket, waypointFor, type PocketAnim } from './components/Board';
-import { PlayerPanel, QueenBadge, Toast } from './components/Panels';
+import { Confetti, FxLayer, PlayerPanel, QueenBadge, Toast } from './components/Panels';
+import type { Burst, Floater } from './components/Panels';
 import QuestionDialog from './components/QuestionDialog';
 import { ResultsScreen, StartScreen } from './components/Screens';
 import { SAMPLE_QUESTIONS } from './data/questions';
@@ -18,7 +19,7 @@ import {
 import { QuestionBank } from './game/questions';
 import { sound } from './game/sound';
 import { clearGame, loadLastGame, saveGame } from './game/storage';
-import type { GameState, ShotType } from './game/types';
+import type { CoinPos, GameState, ShotType } from './game/types';
 import './styles.css';
 
 const SHOTS: { id: ShotType; label: string; desc: string }[] = [
@@ -29,6 +30,19 @@ const SHOTS: { id: ShotType; label: string; desc: string }[] = [
 ];
 
 const SHOT_BONUS: Record<ShotType, number> = { straight: 0, cut: 2, bank: 5, defensive: 0 };
+
+type Theme = 'classic' | 'midnight' | 'royal';
+const THEMES: Theme[] = ['classic', 'midnight', 'royal'];
+
+function loadTheme(): Theme {
+  try {
+    const t = localStorage.getItem('cqb-theme');
+    if (t === 'midnight' || t === 'royal' || t === 'classic') return t;
+  } catch {
+    /* ignore */
+  }
+  return 'classic';
+}
 
 function hasSavedGame(): boolean {
   try {
@@ -49,8 +63,39 @@ export default function App() {
   const [canResume, setCanResume] = useState(hasSavedGame);
   const [clockSecs, setClockSecs] = useState(30);
   const [timeLeft, setTimeLeft] = useState(30);
+  const [theme, setTheme] = useState<Theme>(loadTheme);
+  const [pocketFlash, setPocketFlash] = useState<CoinPos | null>(null);
+  const [bursts, setBursts] = useState<Burst[]>([]);
+  const [floaters, setFloaters] = useState<Floater[]>([]);
   const toastTimer = useRef<number>(0);
   const expiredRef = useRef(false);
+  const fxId = useRef(0);
+
+  useEffect(() => {
+    document.body.dataset.theme = theme;
+    try {
+      localStorage.setItem('cqb-theme', theme);
+    } catch {
+      /* ignore */
+    }
+  }, [theme]);
+
+  const spawnBurst = (x: number, y: number) => {
+    const id = ++fxId.current;
+    setBursts((b) => [...b, { id, x, y }]);
+    window.setTimeout(() => setBursts((b) => b.filter((s) => s.id !== id)), 700);
+  };
+
+  const spawnFloater = (text: string, x: number, y: number, bonus = false) => {
+    const id = ++fxId.current;
+    setFloaters((f) => [...f, { id, text, x, y, bonus }]);
+    window.setTimeout(() => setFloaters((f) => f.filter((s) => s.id !== id)), 1350);
+  };
+
+  const flashPocket = (at: CoinPos) => {
+    setPocketFlash(at);
+    window.setTimeout(() => setPocketFlash(null), 600);
+  };
 
   const flash = useCallback((msg: string, tone: 'good' | 'bad' | 'info') => {
     window.clearTimeout(toastTimer.current);
@@ -175,6 +220,7 @@ export default function App() {
 
     if (res.correct) {
       sound.correct();
+      sound.strike();
       setGame(res.state);
       persist(res.state);
       if (coin) {
@@ -194,6 +240,7 @@ export default function App() {
       else if (wasCover) flash('Cover incoming — pocket it to secure the Queen!', 'info');
     } else {
       sound.wrong();
+      sound.strike();
       setGame(res.state);
       persist(res.state);
       if (coin) {
@@ -240,9 +287,21 @@ export default function App() {
     }
     try {
       const res = completeAnimation(game);
+      const target = pocketAnim?.to;
       setPocketAnim(null);
       setGame(res.state);
       persist(res.state);
+      if (target) {
+        flashPocket(target);
+        spawnBurst(target.x, target.y);
+        spawnFloater(
+          `+${res.pointsAwarded}`,
+          target.x,
+          target.y - 24,
+          res.events.some((e) => e.eventType === 'coverSecured') ||
+            (game.activeShot ? SHOT_BONUS[game.activeShot] > 0 : false),
+        );
+      }
       const types = res.events.map((e) => e.eventType);
       if (types.includes('gameFinished')) {
         sound.win();
@@ -252,7 +311,7 @@ export default function App() {
         sound.queen();
         flash(`Queen secured! +${res.pointsAwarded} pts (cover + bonus). You play again.`, 'good');
       } else {
-        sound.pocket();
+        sound.rattle();
         if (res.state.queenState === 'pendingCover') {
           // already flashed at answer time
         } else {
@@ -287,6 +346,7 @@ export default function App() {
   if (game.phase === 'finished') {
     return (
       <div className="app">
+        <Confetti pieces={game.winner === 0 ? 30 : 80} />
         <ResultsScreen game={game} onRestart={restart} />
         <div className="btn-row center">
           <button className="btn" onClick={() => setGame(null)}>
@@ -314,6 +374,19 @@ export default function App() {
         <h1 className="logo">🎯 Carrom Quiz Battle</h1>
         <div className="top-actions">
           <QueenBadge queenState={game.queenState} />
+          <span className="theme-pick" role="radiogroup" aria-label="Board theme">
+            {THEMES.map((t) => (
+              <button
+                key={t}
+                role="radio"
+                aria-checked={theme === t}
+                aria-label={`${t} theme`}
+                title={`${t} theme`}
+                className={`theme-dot ${t}${theme === t ? ' active' : ''}`}
+                onClick={() => setTheme(t)}
+              />
+            ))}
+          </span>
           <button className="btn small" onClick={() => setPaused((p) => !p)} aria-pressed={paused}>
             {paused ? '▶ Resume' : '⏸ Pause'}
           </button>
@@ -330,16 +403,21 @@ export default function App() {
 
       <main className="layout">
         <div className="board-col">
-          <Board
-            coins={game.coins}
-            queenState={game.queenState}
-            activeCoinId={game.activeCoinId}
-            disabled={boardDisabled}
-            pocketAnim={pocketAnim}
-            strikerX={strikerX}
-            onSelect={handleSelect}
-            onAnimDone={handleAnimDone}
-          />
+          <div className="board-stack" style={{ position: 'relative' }}>
+            <Board
+              coins={game.coins}
+              queenState={game.queenState}
+              activeCoinId={game.activeCoinId}
+              disabled={boardDisabled}
+              pocketAnim={pocketAnim}
+              strikerX={strikerX}
+              aimTo={game.phase === 'asking' && activeCoin ? activeCoin.pos : null}
+              pocketFlash={pocketFlash}
+              onSelect={handleSelect}
+              onAnimDone={handleAnimDone}
+            />
+            <FxLayer bursts={bursts} floaters={floaters} />
+          </div>
           <p className="board-hint" aria-live="polite">
             {paused
               ? 'Paused — press Resume to continue.'

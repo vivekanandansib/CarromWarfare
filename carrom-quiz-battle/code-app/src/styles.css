@@ -79,11 +79,6 @@ body {
   transition: width 1s linear;
 }
 .clock span { position: relative; }
-.room-code {
-  font-size: 1.6rem; letter-spacing: 0.35em; background: #241a0e; color: var(--gold);
-  padding: 6px 12px 6px 18px; border-radius: 8px;
-}
-.mode-pick { margin-bottom: 12px; }
 
 /* cards + players */
 .card {
@@ -187,3 +182,115 @@ body {
 .rules { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
 .results { text-align: center; }
 .final-score { font-size: 1.3rem; }
+
+/* ---------- board paint (themeable SVG stops) ---------- */
+.wood-hi { stop-color: #c98d4e; }
+.wood-mid { stop-color: #a96f35; }
+.wood-lo { stop-color: #7c4f22; }
+.felt-hi { stop-color: #f3d9a4; }
+.felt-lo { stop-color: #dfb26e; }
+.frame-line { stroke: #e8c47c; }
+.flourish { fill: #e8c47c; opacity: 0.85; }
+.design-ring { stroke: #b03030; fill: none; opacity: 0.7; }
+
+body[data-theme='midnight'] {
+  background: radial-gradient(circle at 50% 20%, #101a33 0%, #0a0f22 60%, #05070f 100%);
+}
+body[data-theme='midnight'] .wood-hi { stop-color: #4a5f96; }
+body[data-theme='midnight'] .wood-mid { stop-color: #2c3a5e; }
+body[data-theme='midnight'] .wood-lo { stop-color: #141b31; }
+body[data-theme='midnight'] .felt-hi { stop-color: #a5e3f2; }
+body[data-theme='midnight'] .felt-lo { stop-color: #54a3c2; }
+body[data-theme='midnight'] .frame-line { stroke: #7ef0ff; }
+body[data-theme='midnight'] .flourish { fill: #7ef0ff; }
+body[data-theme='midnight'] .design-ring { stroke: #7ef0ff; }
+body[data-theme='midnight'] .logo, body[data-theme='midnight'] .board-hint { color: #d8f4ff; }
+
+body[data-theme='royal'] {
+  background: radial-gradient(circle at 50% 20%, #431420 0%, #2a0b12 60%, #140407 100%);
+}
+body[data-theme='royal'] .wood-hi { stop-color: #a54451; }
+body[data-theme='royal'] .wood-mid { stop-color: #72222d; }
+body[data-theme='royal'] .wood-lo { stop-color: #3d0f15; }
+body[data-theme='royal'] .felt-hi { stop-color: #f4ddab; }
+body[data-theme='royal'] .felt-lo { stop-color: #d3a055; }
+body[data-theme='royal'] .frame-line { stroke: #ffd54a; }
+body[data-theme='royal'] .flourish { fill: #ffd54a; }
+body[data-theme='royal'] .logo, body[data-theme='royal'] .board-hint { color: #ffe9c4; }
+
+/* ---------- aim guide + pocket flash ---------- */
+.aim-line {
+  stroke: var(--gold); stroke-width: 2.5; stroke-dasharray: 7 6; opacity: 0.85;
+  animation: aimslide 0.7s linear infinite;
+}
+@keyframes aimslide { to { stroke-dashoffset: -13; } }
+.aim-ring {
+  fill: none; stroke: var(--gold); stroke-width: 2.5;
+  animation: pulse 1.1s ease-in-out infinite;
+}
+.pocket-flash {
+  fill: none; stroke: var(--gold); stroke-width: 4;
+  transform-box: fill-box; transform-origin: center;
+  animation: ringexpand 0.55s ease-out forwards;
+}
+@keyframes ringexpand {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(2.1); }
+}
+.coin:not(.disabled):not(.selected):hover { filter: brightness(1.14); }
+.coin:not(.disabled):not(.selected):focus-visible { filter: brightness(1.14); }
+
+/* ---------- pocket bursts + score floaters ---------- */
+.fx-layer { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.burst { position: absolute; width: 0; height: 0; }
+.burst i {
+  position: absolute; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--c, #ffd54a);
+  animation: sparkfly 0.65s ease-out forwards;
+}
+@keyframes sparkfly {
+  from { opacity: 1; transform: translate(0, 0) scale(1); }
+  to { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.3); }
+}
+.floater {
+  position: absolute; transform: translate(-50%, -50%);
+  font-weight: 800; font-size: 1.25rem; color: #fff;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.7);
+  animation: floatup 1.3s ease-out forwards; white-space: nowrap;
+}
+.floater.bonus { color: var(--gold); font-size: 1.45rem; }
+@keyframes floatup {
+  0% { opacity: 0; transform: translate(-50%, -30%) scale(0.7); }
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -160%) scale(1); }
+}
+
+/* ---------- confetti ---------- */
+.confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; overflow: hidden; }
+.confetti i {
+  position: absolute; top: -14px; width: 9px; height: 14px; border-radius: 2px;
+  background: var(--c); left: var(--x);
+  animation: confall var(--d) linear var(--dl) forwards;
+}
+@keyframes confall {
+  to { transform: translateY(112vh) rotate(720deg); }
+}
+
+/* ---------- misc polish ---------- */
+.btn:active { transform: scale(0.97); }
+.room-code {
+  font-size: 1.6rem; letter-spacing: 0.35em; background: #241a0e; color: var(--gold);
+  padding: 6px 12px 6px 18px; border-radius: 8px;
+}
+.mode-pick { margin-bottom: 12px; }
+.champs { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+.champs li::marker { font-weight: 800; color: var(--red); }
+.theme-pick { display: flex; gap: 6px; align-items: center; }
+.theme-dot {
+  width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent;
+  cursor: pointer; min-width: 30px;
+}
+.theme-dot.active { border-color: var(--gold); box-shadow: 0 0 8px var(--gold); }
+.theme-dot.classic { background: linear-gradient(135deg, #c98d4e, #7c4f22); }
+.theme-dot.midnight { background: linear-gradient(135deg, #4a5f96, #141b31); }
+.theme-dot.royal { background: linear-gradient(135deg, #a54451, #3d0f15); }

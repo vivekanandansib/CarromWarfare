@@ -38,6 +38,18 @@ export const sound = {
   tick() {
     beep(990, 60, 0, 'square', 0.05);
   },
+  /** Striker flick. */
+  strike() {
+    beep(190, 70, 0, 'triangle', 0.16);
+    beep(340, 60, 30, 'triangle', 0.1);
+  },
+  /** Coin rattling into the pocket. */
+  rattle() {
+    beep(880, 60, 0, 'triangle', 0.1);
+    beep(620, 60, 60, 'triangle', 0.1);
+    beep(470, 90, 120, 'triangle', 0.1);
+    beep(700, 120, 190, 'sine', 0.08);
+  },
   correct() {
     beep(523, 120, 0, 'sine');
     beep(784, 160, 110, 'sine');

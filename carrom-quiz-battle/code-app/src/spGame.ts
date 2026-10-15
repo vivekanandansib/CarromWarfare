@@ -186,6 +186,35 @@ export async function joinSessionAsPlayer2(rowId: number, name: string): Promise
   unwrap(await CarromSessionsService.update(String(rowId), { Player2Name: name }), 'Joining session');
 }
 
+export interface ChampionRow {
+  sessionId: string;
+  p1: string;
+  p2: string;
+  s1: number;
+  s2: number;
+  winner: number;
+  when: string;
+}
+
+/** Top 10 completed games by winning score (client-side filter/sort — see join notes). */
+export async function listTopChampions(limit = 10): Promise<ChampionRow[]> {
+  const rows = unwrap(await CarromSessionsService.getAll({ top: 200 }), 'Loading champions');
+  const done = rows.filter((r) => {
+    const st = typeof r.GameStatus === 'string' ? r.GameStatus : r.GameStatus?.Value;
+    return st === 'completed';
+  });
+  done.sort((a, b) => Math.max(b.Player1Score ?? 0, b.Player2Score ?? 0) - Math.max(a.Player1Score ?? 0, a.Player2Score ?? 0));
+  return done.slice(0, limit).map((r) => ({
+    sessionId: r.SessionId ?? '',
+    p1: r.Player1Name ?? '?',
+    p2: r.Player2Name ?? '?',
+    s1: r.Player1Score ?? 0,
+    s2: r.Player2Score ?? 0,
+    winner: r.Winner ?? 0,
+    when: r.CompletedAt ?? r.Modified ?? '',
+  }));
+}
+
 export async function saveAttempt(ev: GameEvent): Promise<void> {
   const p = attemptPayload(ev);
   if (!p) return;
