@@ -194,12 +194,14 @@ export async function createClassicSession(
   playerNames: [string, string],
   target: number,
 ): Promise<string> {
+  const p2 = playerNames[1].trim();
   const created = unwrap(
     await CarromSessionsService.create({
       Title: `Classic ${sessionId}`,
       SessionId: sessionId,
       Player1Name: playerNames[0],
-      Player2Name: playerNames[1],
+      // Omit when empty: a placeholder here would make the room look full.
+      ...(p2 ? { Player2Name: p2 } : {}),
       CurrentPlayer: 1,
       Player1Score: 0,
       Player2Score: 0,

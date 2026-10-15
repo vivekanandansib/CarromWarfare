@@ -440,7 +440,7 @@ export default function App() {
     const sessionId = makeId('sess');
     void (async () => {
       try {
-        const rowId = await createClassicSession(sessionId, [p1.trim(), 'Player 2'], target);
+        const rowId = await createClassicSession(sessionId, [p1.trim(), ''], target);
         setClassicGame({
           seat: 1,
           sessionId,
