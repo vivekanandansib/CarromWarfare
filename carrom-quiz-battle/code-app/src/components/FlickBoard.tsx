@@ -126,6 +126,21 @@ export default function FlickBoard({
             <stop offset="55%" stopColor="#d7263d" />
             <stop offset="100%" stopColor="#7d1020" />
           </radialGradient>
+          <linearGradient id="fmanWhite" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#fbf5e6" />
+            <stop offset="100%" stopColor="#e3d3ae" />
+          </linearGradient>
+          <linearGradient id="fmanBlack" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#54432f" />
+            <stop offset="100%" stopColor="#1d140d" />
+          </linearGradient>
+          <linearGradient id="fmanQueen" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#e8546a" />
+            <stop offset="100%" stopColor="#a31328" />
+          </linearGradient>
+          <marker id="fpocketArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1 L 9 5 L 0 9 z" fill="#b03030" />
+          </marker>
           <radialGradient id="fpocket" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#000" />
             <stop offset="72%" stopColor="#120b06" />
@@ -169,6 +184,27 @@ export default function FlickBoard({
         <circle cx="128" cy="88" r="9" fill="none" stroke="#b03030" strokeWidth="2.5" />
         <circle cx="272" cy="88" r="9" fill="none" stroke="#b03030" strokeWidth="2.5" />
 
+        {/* diagonal pocket arrows — the classic carrom marks */}
+        {[
+          { x1: 239, y1: 161, x2: 343, y2: 57 },
+          { x1: 161, y1: 161, x2: 57, y2: 57 },
+          { x1: 161, y1: 239, x2: 57, y2: 343 },
+          { x1: 239, y1: 239, x2: 343, y2: 343 },
+        ].map((a, i) => (
+          <g key={i}>
+            <line
+              x1={a.x1}
+              y1={a.y1}
+              x2={a.x2}
+              y2={a.y2}
+              stroke="#b03030"
+              strokeWidth="2.5"
+              markerEnd="url(#fpocketArrow)"
+            />
+            <circle cx={a.x1} cy={a.y1} r="3.5" fill="#b03030" />
+          </g>
+        ))}
+
         {POCKETS.map((p, i) => (
           <g key={i}>
             <circle cx={p.x} cy={p.y} r="19" fill="none" stroke="#e8c47c" strokeWidth="2.5" opacity="0.85" />
@@ -184,40 +220,50 @@ export default function FlickBoard({
           </g>
         )}
 
-        {/* coins */}
-        {coins.map((c) => (
-          <g key={c.id} filter="url(#fsoft)">
-            <ellipse cx={c.x} cy={c.y + 3} rx="10.5" ry="3.6" fill="#3a2410" opacity="0.35" />
-            <circle
-              cx={c.x}
-              cy={c.y}
-              r={c.color === 'queen' ? 12.5 : 11}
-              fill={
-                c.color === 'queen'
-                  ? 'url(#fcoinQueen)'
-                  : c.color === 'white'
-                    ? 'url(#fcoinWhite)'
-                    : 'url(#fcoinBlack)'
-              }
-              stroke={c.color === 'queen' ? '#ffd9de' : '#4a3018'}
-              strokeWidth={1.5}
-            />
-            {c.color === 'queen' ? (
-              <text x={c.x} y={c.y + 5} textAnchor="middle" fontSize="12" fill="#fff" fontWeight="bold">
-                Q
-              </text>
-            ) : (
-              <circle cx={c.x} cy={c.y} r="1.8" fill={c.color === 'black' ? '#6b5d4d' : '#fff'} opacity="0.9" />
-            )}
-          </g>
-        ))}
+        {/* coins: flat printed carrom men */}
+        {coins.map((c) => {
+          const face = c.color === 'queen' ? 'url(#fmanQueen)' : c.color === 'white' ? 'url(#fmanWhite)' : 'url(#fmanBlack)';
+          const rim = c.color === 'queen' ? '#7d1020' : c.color === 'white' ? '#8a6f45' : '#0a0705';
+          const print = c.color === 'queen' ? '#ffe3e8' : c.color === 'white' ? '#b03030' : '#d8c49a';
+          const r = c.color === 'queen' ? 12.5 : 11;
+          return (
+            <g key={c.id}>
+              <ellipse cx={c.x} cy={c.y + 3} rx="10.5" ry="3.6" fill="#3a2410" opacity="0.35" />
+              <circle cx={c.x} cy={c.y + 1.8} r={r} fill={rim} opacity="0.85" />
+              <g filter="url(#fsoft)">
+                <circle cx={c.x} cy={c.y} r={r} fill={face} stroke={rim} strokeWidth={1.5} />
+              </g>
+              <circle cx={c.x} cy={c.y} r={r - 3.2} fill="none" stroke={print} strokeWidth="1.6" opacity="0.95" />
+              <circle cx={c.x} cy={c.y} r={r - 6.5} fill="none" stroke={print} strokeWidth="1" opacity="0.7" />
+              {c.color === 'queen' ? (
+                <text x={c.x} y={c.y + 4} textAnchor="middle" fontSize="9.5" fill="#fff" fontWeight="bold">
+                  Q
+                </text>
+              ) : (
+                <circle cx={c.x} cy={c.y} r="1.6" fill={print} opacity="0.9" />
+              )}
+              <path
+                d={`M ${c.x - 6} ${c.y - 5} A 8 8 0 0 1 ${c.x + 2} ${c.y - 7.5}`}
+                fill="none"
+                stroke="#fff"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                opacity="0.35"
+              />
+            </g>
+          );
+        })}
 
-        {/* striker */}
+        {/* striker with classic rings */}
         {striker && (
           <g className="striker">
             <ellipse cx={striker.x} cy={striker.y + 12} rx="13" ry="3.5" fill="#000" opacity="0.3" />
-            <circle cx={striker.x} cy={striker.y} r="14" fill="url(#fstriker)" stroke="#b03030" strokeWidth="3" />
-            <circle cx={striker.x - 4.5} cy={striker.y - 5} r="3.2" fill="#fff" opacity="0.8" />
+            <circle cx={striker.x} cy={striker.y + 1.5} r="14" fill="#4a3018" opacity="0.8" />
+            <circle cx={striker.x} cy={striker.y} r="14" fill="url(#fstriker)" stroke="#5b3a16" strokeWidth="1.5" />
+            <circle cx={striker.x} cy={striker.y} r="10.5" fill="none" stroke="#b03030" strokeWidth="2" />
+            <circle cx={striker.x} cy={striker.y} r="6" fill="none" stroke="#2e7d4f" strokeWidth="1.5" />
+            <circle cx={striker.x} cy={striker.y} r="1.8" fill="#b03030" />
+            <circle cx={striker.x - 4.5} cy={striker.y - 5} r="2.6" fill="#fff" opacity="0.5" />
           </g>
         )}
 
