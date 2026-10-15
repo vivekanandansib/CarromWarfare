@@ -4,6 +4,11 @@ import { nearestPocket } from './Board';
 import { Confetti, FxLayer, PlayerPanel, QueenBadge, Toast } from './Panels';
 import type { Burst, Floater } from './Panels';
 import { createClassic, resolveShot, type ClassicState } from '../game/classic';
+import {
+  serializeClassicSnapshot,
+  snapshotBodies,
+  type ClassicSnapshot,
+} from '../game/classic';
 import { initialCoinLayout, makeId } from '../game/engine';
 import {
   allSettled,
@@ -34,11 +39,21 @@ export interface ClassicSink {
   onShot?: (state: ClassicState, info: ClassicShotInfo) => void;
 }
 
+export interface ClassicNet {
+  mySeat: PlayerNumber;
+  myName: string;
+  /** Full room read: display names + latest snapshot (null when missing). */
+  readRoom: () => Promise<{ p1: string; p2: string; snapshot: ClassicSnapshot | null } | null>;
+  writeSnapshot: (snap: ClassicSnapshot) => Promise<void>;
+}
+
 interface ClassicModeProps {
   playerNames: [string, string];
   targetScore: number;
   clockSecs: number;
   sink?: ClassicSink;
+  sessionId?: string;
+  net?: ClassicNet;
   onExit: () => void;
 }
 
@@ -62,9 +77,9 @@ function freshStriker(x: number): Body {
 
 const clampStrikerX = (x: number) => Math.min(BASELINE_MAX_X, Math.max(BASELINE_MIN_X, x));
 
-export default function ClassicMode({ playerNames, targetScore, clockSecs, sink, onExit }: ClassicModeProps) {
+export default function ClassicMode({ playerNames, targetScore, clockSecs, sink, sessionId, net, onExit }: ClassicModeProps) {
   const [rules, setRules] = useState<ClassicState>(() =>
-    createClassic(makeId('sess'), playerNames, targetScore),
+    createClassic(sessionId ?? makeId('sess'), playerNames, targetScore),
   );
   const [bodies, setBodies] = useState<Body[]>(() => [...coinBodies(), freshStriker(200)]);
   const [phase, setPhase] = useState<'aim' | 'rolling'>('aim');
@@ -86,6 +101,12 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
   const fxId = useRef(0);
   const sinkRef = useRef(sink);
   sinkRef.current = sink;
+  const netRef = useRef(net);
+  netRef.current = net;
+  const peerRef = useRef<string | null>(null);
+  const lastWrittenRef = useRef<string | null>(null);
+  const lastSeenRef = useRef<string | null>(null);
+  const phaseRef = useRef<'aim' | 'rolling'>('aim');
 
   // keep sim in sync while aiming (fresh reference each new game/turn reset does it)
   useEffect(() => {
@@ -97,7 +118,78 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
   }, [aim]);
 
   useEffect(() => {
-    sinkRef.current?.onSessionStart?.(rulesRef.current);
+    phaseRef.current = phase;
+  }, [phase]);
+
+  const pushSnapshot = (r: ClassicState) => {
+    const n = netRef.current;
+    if (!n) return;
+    const snap: ClassicSnapshot = {
+      mode: 'classic',
+      rules: r,
+      bodies: simRef.current
+        .filter((b) => b.id !== 'S')
+        .map((b) => ({ id: b.id, x: b.pos.x, y: b.pos.y })),
+      strikerX: strikerXRef.current,
+    };
+    lastWrittenRef.current = serializeClassicSnapshot(snap.rules, snap.bodies, snap.strikerX);
+    void n.writeSnapshot(snap).catch(() => {
+      /* snapshot write failed — game continues locally, next shot retries */
+    });
+  };
+
+  // Online mirror: adopt remote snapshots (never our echo, never mid-roll).
+  useEffect(() => {
+    const n = netRef.current;
+    if (!n) return;
+    const t = window.setInterval(() => {
+      void (async () => {
+        const nn = netRef.current;
+        if (!nn || phaseRef.current !== 'aim') return;
+        try {
+          const room = await nn.readRoom();
+          if (!room) return;
+          const names: [string, string] = [
+            nn.mySeat === 1 ? nn.myName : room.p1 || 'Player 1',
+            nn.mySeat === 2 ? nn.myName : room.p2 || 'Player 2',
+          ];
+          if (nn.mySeat === 1 && room.p2 && peerRef.current !== room.p2) {
+            peerRef.current = room.p2;
+            flash(`${room.p2} joined the room!`, 'good');
+          }
+          setRules((cur) => {
+            if (!cur) return cur;
+            if (cur.playerNames[0] === names[0] && cur.playerNames[1] === names[1]) return cur;
+            return { ...cur, playerNames: names };
+          });
+          if (!room.snapshot) return;
+          const json = serializeClassicSnapshot(room.snapshot.rules, room.snapshot.bodies, room.snapshot.strikerX);
+          if (json === lastWrittenRef.current || json === lastSeenRef.current) return;
+          lastSeenRef.current = json;
+          const snap = room.snapshot;
+          setRules({ ...snap.rules, playerNames: names });
+          const restored = snapshotBodies(snap, QUEEN_R, STRIKER_R, COIN_R);
+          restored.push(freshStriker(snap.strikerX));
+          strikerXRef.current = snap.strikerX;
+          simRef.current = restored;
+          setBodies(restored.map((b) => ({ ...b, pos: { ...b.pos }, vel: { ...b.vel } })));
+        } catch {
+          /* keep playing locally; next poll retries */
+        }
+      })();
+    }, 2000);
+    return () => window.clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!netRef.current) {
+      sinkRef.current?.onSessionStart?.(rulesRef.current);
+    } else {
+      // Publish the opening position so guests can join before the first shot.
+      syncSim();
+      pushSnapshot(rulesRef.current);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -127,12 +219,14 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
 
   useEffect(() => {
     if (paused || phase !== 'aim' || rules.finished) return;
+    if (net && rules.currentPlayer !== net.mySeat) return;
     if (timeLeft <= 0) {
       if (!expiredRef.current) {
         expiredRef.current = true;
         sound.wrong();
         const res = resolveShot(rulesRef.current, []);
         setRules(res.state);
+        pushSnapshot(res.state);
         sinkRef.current?.onShot?.(res.state, {
           shooter: res.state.currentPlayer === 1 ? 2 : 1,
           pocketedNow: [],
@@ -187,6 +281,7 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
     const shooter = rulesRef.current.currentPlayer;
     const res = resolveShot(rulesRef.current, ids);
     setRules(res.state);
+    pushSnapshot(res.state);
     // fx per pocketed coin
     for (const c of captured) {
       if (c.id === 'S') continue;
@@ -238,6 +333,7 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
   const fireDrag = (drag: Vec) => {
     const s = simRef.current.find((b) => b.id === 'S');
     if (!s || phase !== 'aim' || paused) return;
+    if (net && rulesRef.current.currentPlayer !== net.mySeat) return;
     const v = dragToVelocity(drag);
     if (Math.hypot(v.x, v.y) < 60) return; // too soft — ignore
     s.vel = v;
@@ -248,6 +344,7 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
 
   const handlePointerDown = (pos: CoinPos) => {
     if (phase !== 'aim' || paused) return;
+    if (net && rulesRef.current.currentPlayer !== net.mySeat) return;
     const s = simRef.current.find((b) => b.id === 'S');
     if (!s) syncSim();
     const cur = (simRef.current.find((b) => b.id === 'S') ?? { pos: { x: strikerXRef.current, y: 312 } }).pos;
@@ -290,6 +387,8 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
 
   const handleKeyShot = (kind: 'left' | 'right' | 'up' | 'down' | 'powerUp' | 'powerDown' | 'fire') => {
     if (phase !== 'aim' || paused) return;
+    if (net && rulesRef.current.currentPlayer !== net.mySeat) return;
+    if (phase !== 'aim' || paused) return;
     if (kind === 'fire') {
       fireDrag(vecFromAim(aimRef.current));
       return;
@@ -321,14 +420,9 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
     }
   };
 
-  // init sim on mount
-  useEffect(() => {
-    syncSim();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const restart = () => {
-    const g = createClassic(makeId('sess'), rulesRef.current.playerNames, rulesRef.current.targetScore);
+    if (net && net.mySeat !== 1) return;
+    const g = createClassic(sessionId ?? makeId('sess'), rulesRef.current.playerNames, rulesRef.current.targetScore);
     setRules(g);
     rulesRef.current = g;
     strikerXRef.current = 200;
@@ -338,7 +432,11 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
     setAim({ angleDeg: -90, power: 0.45 });
     setTimeLeft(clockSecs);
     expiredRef.current = false;
-    sinkRef.current?.onSessionStart?.(g);
+    if (net) {
+      pushSnapshot(g);
+    } else {
+      sinkRef.current?.onSessionStart?.(g);
+    }
   };
 
   if (rules.finished) {
@@ -357,9 +455,13 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
               {rules.playerNames[0]} <strong>{s1}</strong> — <strong>{s2}</strong> {rules.playerNames[1]}
             </p>
             <div className="btn-row center">
-              <button className="btn primary" onClick={restart} autoFocus>
-                Play again
-              </button>
+              {!net || net.mySeat === 1 ? (
+                <button className="btn primary" onClick={restart} autoFocus>
+                  Play again
+                </button>
+              ) : (
+                <p className="muted">Waiting for the host to start a new game…</p>
+              )}
               <button className="btn" onClick={onExit}>
                 Menu
               </button>
@@ -371,6 +473,8 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
   }
 
   const me: PlayerNumber = rules.currentPlayer;
+  const myTurn = !net || rules.currentPlayer === net.mySeat;
+  const opponentName = rules.playerNames[net && net.mySeat === 1 ? 1 : 0];
   const striker = simRef.current.find((b) => b.id === 'S');
   const paintCoins = bodies
     .filter((b) => b.id !== 'S')
@@ -393,9 +497,11 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
           <button className="btn small" onClick={() => setPaused((p) => !p)} aria-pressed={paused}>
             {paused ? '▶ Resume' : '⏸ Pause'}
           </button>
-          <button className="btn small" onClick={restart}>
-            ↺ Restart
-          </button>
+          {(!net || net.mySeat === 1) && (
+            <button className="btn small" onClick={restart}>
+              ↺ Restart
+            </button>
+          )}
           <button className="btn small" onClick={onExit}>
             Menu
           </button>
@@ -410,8 +516,8 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
             <FlickBoard
               coins={paintCoins}
               striker={striker ? { x: striker.pos.x, y: striker.pos.y } : null}
-              aim={phase === 'aim' && !paused ? aim : null}
-              interactive={phase === 'aim' && !paused}
+              aim={phase === 'aim' && !paused && myTurn ? aim : null}
+              interactive={phase === 'aim' && !paused && myTurn}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerEnd={handlePointerEnd}
@@ -422,13 +528,15 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
           <p className="board-hint" aria-live="polite">
             {paused
               ? 'Paused — press Resume to continue.'
-              : phase === 'rolling'
-                ? 'Rolling…'
-                : rules.queen === 'pendingCover'
-                  ? `${rules.playerNames[me - 1]} must cover the Queen — pocket a coin!`
-                  : `${rules.playerNames[me - 1]}, drag the striker back and release to shoot.`}
+              : !myTurn
+                ? `Waiting for ${opponentName}…`
+                : phase === 'rolling'
+                  ? 'Rolling…'
+                  : rules.queen === 'pendingCover'
+                    ? `${rules.playerNames[me - 1]} must cover the Queen — pocket a coin!`
+                    : `${rules.playerNames[me - 1]}, drag the striker back and release to shoot.`}
           </p>
-          {phase === 'aim' && !paused && (
+          {phase === 'aim' && !paused && myTurn && (
             <div
               className={`clock${timeLeft <= 5 ? ' low' : ''}`}
               role="timer"

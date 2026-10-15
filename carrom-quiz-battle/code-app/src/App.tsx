@@ -35,8 +35,10 @@ import {
   loadActiveQuestions,
   patchClassicSession,
   patchSessionRow,
+  readClassicSnapshot,
   saveAttempt,
   saveCoinEvent,
+  writeClassicSnapshot,
 } from './spGame';
 import type { ChampionRow } from './spGame';
 import './styles.css';
@@ -343,6 +345,37 @@ export default function App() {
   };
 
   /** SharePoint sink for Classic Flick shots (same lists, mode tagged in StateJson). */
+  /** Coin-event audit rows for a classic shot (session snapshot handled separately). */
+  const persistClassicShot = async (s: ClassicState, info: ClassicShotInfo) => {
+    const status = s.finished ? 'completed' : 'inProgress';
+    const base = {
+      score: [...s.scores] as [number, number],
+      currentPlayer: s.currentPlayer,
+      gameStatus: status as 'inProgress' | 'completed',
+    };
+    for (const id of info.pocketedNow) {
+      if (id === 'Q') {
+        if (info.queenEvent === 'pending') {
+          await saveCoinEvent(
+            createGameEvent(s.sessionId, 'coinPocketed', info.shooter, { coinId: 'Q', pointsAwarded: 0, ...base }),
+          );
+        } else if (info.queenEvent === 'secured') {
+          await saveCoinEvent(
+            createGameEvent(s.sessionId, 'coverSecured', info.shooter, { coinId: 'Q', pointsAwarded: 20, ...base }),
+          );
+        } else if (info.queenEvent === 'returned') {
+          await saveCoinEvent(
+            createGameEvent(s.sessionId, 'coverFailed', info.shooter, { coinId: 'Q', pointsAwarded: 0, ...base }),
+          );
+        }
+      } else {
+        await saveCoinEvent(
+          createGameEvent(s.sessionId, 'coinPocketed', info.shooter, { coinId: id, pointsAwarded: 10, ...base }),
+        );
+      }
+    }
+  };
+
   const classicSink = {
     onSessionStart: (s: ClassicState) => {
       classicRowId.current = null;
@@ -357,33 +390,7 @@ export default function App() {
     onShot: (s: ClassicState, info: ClassicShotInfo) => {
       void (async () => {
         try {
-          const status = s.finished ? 'completed' : 'inProgress';
-          const base = {
-            score: [...s.scores] as [number, number],
-            currentPlayer: s.currentPlayer,
-            gameStatus: status as 'inProgress' | 'completed',
-          };
-          for (const id of info.pocketedNow) {
-            if (id === 'Q') {
-              if (info.queenEvent === 'pending') {
-                await saveCoinEvent(
-                  createGameEvent(s.sessionId, 'coinPocketed', info.shooter, { coinId: 'Q', pointsAwarded: 0, ...base }),
-                );
-              } else if (info.queenEvent === 'secured') {
-                await saveCoinEvent(
-                  createGameEvent(s.sessionId, 'coverSecured', info.shooter, { coinId: 'Q', pointsAwarded: 20, ...base }),
-                );
-              } else if (info.queenEvent === 'returned') {
-                await saveCoinEvent(
-                  createGameEvent(s.sessionId, 'coverFailed', info.shooter, { coinId: 'Q', pointsAwarded: 0, ...base }),
-                );
-              }
-            } else {
-              await saveCoinEvent(
-                createGameEvent(s.sessionId, 'coinPocketed', info.shooter, { coinId: id, pointsAwarded: 10, ...base }),
-              );
-            }
-          }
+          await persistClassicShot(s, info);
           if (classicRowId.current) await patchClassicSession(classicRowId.current, s);
         } catch (e) {
           setSpError(
@@ -394,6 +401,92 @@ export default function App() {
         }
       })();
     },
+  };
+
+  const classicOnlineShot = (s: ClassicState, info: ClassicShotInfo) => {
+    void (async () => {
+      try {
+        await persistClassicShot(s, info);
+      } catch (e) {
+        setSpError(
+          e instanceof Error
+            ? `${e.message} The game continues — progress may not be saved.`
+            : 'SharePoint save failed.',
+        );
+      }
+    })();
+  };
+
+  // Classic online room (null = lobby; seat null = same laptop)
+  const [classicGame, setClassicGame] = useState<null | {
+    seat: 1 | 2 | null;
+    sessionId: string;
+    rowId: string;
+    code: string;
+    myName: string;
+  }>(null);
+  const [classicJoinCode, setClassicJoinCode] = useState('');
+  const [classicJoinError, setClassicJoinError] = useState<string | null>(null);
+  const [classicJoining, setClassicJoining] = useState(false);
+
+  const startClassicLocal = () => {
+    setClassicJoinError(null);
+    setClassicGame({ seat: null, sessionId: '', rowId: '', code: '', myName: '' });
+  };
+
+  const hostClassic = () => {
+    if (!p1.trim() || target <= 0) return;
+    setClassicJoinError(null);
+    const sessionId = makeId('sess');
+    void (async () => {
+      try {
+        const rowId = await createClassicSession(sessionId, [p1.trim(), 'Player 2'], target);
+        setClassicGame({
+          seat: 1,
+          sessionId,
+          rowId,
+          code: roomCodeForSession(sessionId),
+          myName: p1.trim(),
+        });
+      } catch (e) {
+        setSpError(e instanceof Error ? e.message : 'Could not host the classic room.');
+      }
+    })();
+  };
+
+  const joinClassic = () => {
+    if (!p1.trim() || classicJoinCode.trim().length < 6) return;
+    setClassicJoining(true);
+    setClassicJoinError(null);
+    void (async () => {
+      try {
+        let found = null;
+        let scanned = 'none';
+        for (let attempt = 0; attempt < 3 && !found; attempt++) {
+          if (attempt > 0) await new Promise((r) => window.setTimeout(r, 2500));
+          const rows = await listOpenSessions();
+          scanned = `${rows.length} rows: ${describeRows(rows) || '—'}`;
+          found = findSessionByCode(rows, classicJoinCode, 'classic');
+        }
+        if (!found || typeof found.ID !== 'number' || !found.SessionId)
+          throw new Error(`No open classic room with code “${classicJoinCode.trim().toUpperCase()}” (scanned ${scanned}).`);
+        if (found.Player2Name?.trim()) throw new Error('That room is already full.');
+        await joinSessionAsPlayer2(found.ID, p1.trim());
+        const snap = await readClassicSnapshot(found.SessionId);
+        if (!snap) throw new Error('Room found, but the board is not ready yet — retry in a moment.');
+        setClassicGame({
+          seat: 2,
+          sessionId: found.SessionId,
+          rowId: String(found.ID),
+          code: roomCodeForSession(found.SessionId),
+          myName: p1.trim(),
+        });
+      } catch (e) {
+        setClassicJoinError(e instanceof Error ? e.message : 'Could not join the room.');
+      } finally {
+        setClassicJoining(false);
+      }
+    })();
   };
 
   const startOnlineHost = () => {
@@ -661,13 +754,108 @@ export default function App() {
 
   if (!game) {
     if (appTab === 'classic') {
+      if (!classicGame) {
+        return (
+          <div className="app">
+            {spError && (
+              <div className="error-banner" role="alert">
+                {spError} <button onClick={() => setSpError(null)} aria-label="Dismiss error">✕</button>
+              </div>
+            )}
+            <div className="screen">
+              <div className="hero">
+                <h1>🎲 Classic Flick</h1>
+                <p className="tagline">Real flick physics. Same laptop, or online across two laptops.</p>
+              </div>
+              <div className="card">
+                <h2>Play mode</h2>
+                <div className="form-row">
+                  <label>
+                    Your name
+                    <input value={p1} onChange={(e) => setP1(e.target.value)} maxLength={20} aria-label="Your name" />
+                  </label>
+                  <label>
+                    Room code (to join)
+                    <input
+                      value={classicJoinCode}
+                      onChange={(e) => setClassicJoinCode(e.target.value.toUpperCase())}
+                      maxLength={6}
+                      placeholder="ABC123"
+                      aria-label="Classic room code"
+                    />
+                  </label>
+                </div>
+                {classicJoinError && (
+                  <div className="error-banner" role="alert">
+                    {classicJoinError}
+                  </div>
+                )}
+                <div className="btn-row">
+                  <button className="btn primary" onClick={startClassicLocal}>
+                    🖥 This laptop
+                  </button>
+                  <button className="btn" onClick={hostClassic} disabled={!p1.trim()}>
+                    🌐 Host online
+                  </button>
+                  <button
+                    className="btn"
+                    onClick={joinClassic}
+                    disabled={!p1.trim() || classicJoinCode.trim().length < 6 || classicJoining}
+                  >
+                    {classicJoining ? 'Joining…' : '🔑 Join room'}
+                  </button>
+                </div>
+                <div className="btn-row">
+                  <button className="btn small" onClick={() => setAppTab('quiz')}>
+                    ← Back to Quiz Battle
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      if (classicGame.seat === null) {
+        return (
+          <ClassicMode
+            playerNames={[p1.trim() || 'Asha', p2.trim() || 'Ravi']}
+            targetScore={target > 0 ? target : 50}
+            clockSecs={clockSecs}
+            sink={classicSink}
+            onExit={() => {
+              setClassicGame(null);
+              setAppTab('quiz');
+            }}
+          />
+        );
+      }
       return (
         <ClassicMode
-          playerNames={[p1.trim() || 'Asha', p2.trim() || 'Ravi']}
+          key={`${classicGame.sessionId}-p${classicGame.seat}`}
+          sessionId={classicGame.sessionId}
+          playerNames={
+            classicGame.seat === 1
+              ? [classicGame.myName, 'Player 2']
+              : ['Player 1', classicGame.myName]
+          }
           targetScore={target > 0 ? target : 50}
           clockSecs={clockSecs}
-          sink={classicSink}
-          onExit={() => setAppTab('quiz')}
+          sink={{ onShot: classicOnlineShot }}
+          net={{
+            mySeat: classicGame.seat,
+            myName: classicGame.myName,
+            readRoom: async () => {
+              const row = await fetchSessionRow(classicGame.sessionId);
+              if (!row) return null;
+              const snapshot = await readClassicSnapshot(classicGame.sessionId);
+              return { p1: row.Player1Name ?? '', p2: row.Player2Name ?? '', snapshot };
+            },
+            writeSnapshot: (snap) => writeClassicSnapshot(classicGame.rowId, snap),
+          }}
+          onExit={() => {
+            setClassicGame(null);
+            setAppTab('quiz');
+          }}
         />
       );
     }

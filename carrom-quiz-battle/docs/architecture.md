@@ -256,5 +256,7 @@ foul forfeits points, Queen + cover, target/board-clear wins — all unit-tested
 - Shots are real: drag back and release (pointer) or arrows + Enter (keyboard).
 - Same look, sounds, clock, bursts, and SharePoint audit rows (sessions, coin
   events; attempts are quiz-only) with `mode: 'classic'` tagged in `StateJson`.
-- Classic is **same-device only** in v1 — physics positions don't travel over the
-  polling transport yet. Online rooms remain quiz-mode.
+- Online Classic (two laptops): **result sync, not motion sync.** The shooting device
+  plays the shot locally with full animation; on settle it writes the outcome
+  snapshot (rules + rest positions). The other device mirrors it like a quiz room.
+  Same room codes, same turn gating, same Queen/clock rules. No determinism risk.

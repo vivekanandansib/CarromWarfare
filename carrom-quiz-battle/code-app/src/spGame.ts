@@ -7,7 +7,9 @@ import { CarromQuestionsService } from './generated/services/CarromQuestionsServ
 import { CarromSessionsService } from './generated/services/CarromSessionsService';
 import type { CarromQuestionsRead } from './generated/models/CarromQuestionsModel';
 import { attemptPayload, coinEventPayload } from './game/sharepointSync';
+import { deserializeClassicSnapshot, serializeClassicSnapshot } from './game/classic';
 import { serializeState } from './game/engine';
+import type { ClassicSnapshot, ClassicState } from './game/classic';
 import type { GameEvent, GameState, Question } from './game/types';
 
 export class SpError extends Error {
@@ -215,7 +217,7 @@ export async function createClassicSession(
 
 export async function patchClassicSession(
   rowId: string,
-  state: import('./game/classic').ClassicState,
+  state: ClassicState,
 ): Promise<void> {
   const finished = state.finished;
   unwrap(
@@ -241,6 +243,31 @@ export interface ChampionRow {
   s2: number;
   winner: number;
   when: string;
+}
+
+/** Read a classic snapshot (null when absent/invalid). */
+export async function readClassicSnapshot(sessionId: string): Promise<ClassicSnapshot | null> {
+  const row = await fetchSessionRow(sessionId);
+  if (!row?.StateJson) return null;
+  return deserializeClassicSnapshot(row.StateJson) ?? null;
+}
+
+/** Write a full classic snapshot (rules + board + scores). */
+export async function writeClassicSnapshot(rowId: string, snap: ClassicSnapshot): Promise<void> {
+  const finished = snap.rules.finished;
+  unwrap(
+    await CarromSessionsService.update(rowId, {
+      CurrentPlayer: snap.rules.currentPlayer,
+      Player1Score: snap.rules.scores[0],
+      Player2Score: snap.rules.scores[1],
+      GameStatus: finished ? 'completed' : 'inProgress',
+      StateJson: serializeClassicSnapshot(snap.rules, snap.bodies, snap.strikerX),
+      ...(finished
+        ? { CompletedAt: new Date().toISOString(), Winner: snap.rules.winner ?? 0 }
+        : {}),
+    }),
+    'Saving classic snapshot',
+  );
 }
 
 /** Top 10 completed games by winning score (client-side filter/sort — see join notes). */

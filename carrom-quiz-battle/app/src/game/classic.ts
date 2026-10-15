@@ -1,6 +1,7 @@
 // Classic Flick turn rules (pure, tested): scoring, fouls, Queen + cover, win.
 // Separate from the quiz engine — same spirit, physics shots instead of questions.
 import type { PlayerNumber } from './types';
+import type { Body } from './physics';
 
 export type ClassicQueen = 'available' | 'pendingCover' | 'secured';
 
@@ -139,4 +140,58 @@ export function resolveShot(
     next.winner = winner;
   }
   return { state: next, points, pocketedNow: fresh, foul, queenEvent };
+}
+
+// ---------------------------------------------------------------------------
+// Online snapshots: the full rest-state of a classic game travels in StateJson.
+// Only ever written at rest (after a settle, restart, or creation) — the live
+// ball motion is never synced; the other device mirrors the outcome.
+// ---------------------------------------------------------------------------
+
+export interface ClassicSnapshotBody {
+  id: string;
+  x: number;
+  y: number;
+}
+
+export interface ClassicSnapshot {
+  mode: 'classic';
+  rules: ClassicState;
+  bodies: ClassicSnapshotBody[];
+  strikerX: number;
+}
+
+export function serializeClassicSnapshot(
+  rules: ClassicState,
+  bodies: { id: string; x: number; y: number }[],
+  strikerX: number,
+): string {
+  return JSON.stringify({
+    mode: 'classic',
+    rules,
+    bodies: bodies.map((b) => ({ id: b.id, x: Math.round(b.x * 10) / 10, y: Math.round(b.y * 10) / 10 })),
+    strikerX,
+  });
+}
+
+export function deserializeClassicSnapshot(json: string): ClassicSnapshot | undefined {
+  try {
+    const s = JSON.parse(json) as Partial<ClassicSnapshot>;
+    if (!s || s.mode !== 'classic' || !s.rules || typeof s.rules.sessionId !== 'string') return undefined;
+    if (!Array.isArray(s.bodies) || typeof s.strikerX !== 'number') return undefined;
+    if (!Array.isArray(s.rules.scores) || typeof s.rules.currentPlayer !== 'number') return undefined;
+    return s as ClassicSnapshot;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Rebuild sim bodies from a snapshot (all at rest). */
+export function snapshotBodies(snap: ClassicSnapshot, queenR: number, strikerR: number, coinR: number): Body[] {
+  return snap.bodies.map((b) => ({
+    id: b.id,
+    pos: { x: b.x, y: b.y },
+    vel: { x: 0, y: 0 },
+    radius: b.id === 'Q' ? queenR : b.id === 'S' ? strikerR : coinR,
+  }));
 }

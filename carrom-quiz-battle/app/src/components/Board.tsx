@@ -87,9 +87,21 @@ export function missMidpoint(from: CoinPos, to: CoinPos): CoinPos {
 }
 
 function coinGradient(c: Coin): string {
-  if (c.color === 'queen') return 'url(#coinQueen)';
-  if (c.color === 'white') return 'url(#coinWhite)';
-  return 'url(#coinBlack)';
+  if (c.color === 'queen') return 'url(#manQueen)';
+  if (c.color === 'white') return 'url(#manWhite)';
+  return 'url(#manBlack)';
+}
+
+function coinRim(c: Coin): string {
+  if (c.color === 'queen') return '#7d1020';
+  if (c.color === 'white') return '#8a6f45';
+  return '#0a0705';
+}
+
+function coinPrint(c: Coin): string {
+  if (c.color === 'queen') return '#ffe3e8';
+  if (c.color === 'white') return '#b03030';
+  return '#d8c49a';
 }
 
 export default function Board({
@@ -170,6 +182,22 @@ export default function Board({
             <stop offset="55%" stopColor="#f3ead3" />
             <stop offset="100%" stopColor="#c9b183" />
           </radialGradient>
+          {/* flat printed carrom men */}
+          <linearGradient id="manWhite" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#fbf5e6" />
+            <stop offset="100%" stopColor="#e3d3ae" />
+          </linearGradient>
+          <linearGradient id="manBlack" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#54432f" />
+            <stop offset="100%" stopColor="#1d140d" />
+          </linearGradient>
+          <linearGradient id="manQueen" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#e8546a" />
+            <stop offset="100%" stopColor="#a31328" />
+          </linearGradient>
+          <marker id="pocketArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1 L 9 5 L 0 9 z" fill="#b03030" />
+          </marker>
           <radialGradient id="coinBlack" cx="38%" cy="32%" r="80%">
             <stop offset="0%" stopColor="#6b5d4d" />
             <stop offset="55%" stopColor="#33291f" />
@@ -252,6 +280,27 @@ export default function Board({
         <circle cx="272" cy="88" r="9" fill="none" stroke="#b03030" strokeWidth="2.5" />
         <circle cx="200" cy="88" r="3.5" fill="#b03030" />
 
+        {/* diagonal pocket arrows — the classic carrom marks */}
+        {[
+          { x1: 239, y1: 161, x2: 343, y2: 57 },
+          { x1: 161, y1: 161, x2: 57, y2: 57 },
+          { x1: 161, y1: 239, x2: 57, y2: 343 },
+          { x1: 239, y1: 239, x2: 343, y2: 343 },
+        ].map((a, i) => (
+          <g key={i}>
+            <line
+              x1={a.x1}
+              y1={a.y1}
+              x2={a.x2}
+              y2={a.y2}
+              stroke="#b03030"
+              strokeWidth="2.5"
+              markerEnd="url(#pocketArrow)"
+            />
+            <circle cx={a.x1} cy={a.y1} r="3.5" fill="#b03030" />
+          </g>
+        ))}
+
         {/* pockets with depth */}
         {POCKETS.map((p, i) => (
           <g key={i}>
@@ -278,12 +327,15 @@ export default function Board({
           </g>
         )}
 
-        {/* striker */}
+        {/* striker with classic rings */}
         <g className="striker" style={{ transform: `translate(${strikerX}px, 312px)` }}>
           <ellipse cx="0" cy="12" rx="13" ry="3.5" fill="#000" opacity="0.3" />
-          <circle cx="0" cy="0" r="14" fill="url(#strikerGrad)" stroke="#b03030" strokeWidth="3" />
-          <circle cx="0" cy="0" r="14" fill="none" stroke="#7d1f1f" strokeWidth="1" opacity="0.6" />
-          <circle cx="-4.5" cy="-5" r="3.2" fill="#fff" opacity="0.8" />
+          <circle cx="0" cy="1.5" r="14" fill="#4a3018" opacity="0.8" />
+          <circle cx="0" cy="0" r="14" fill="url(#strikerGrad)" stroke="#5b3a16" strokeWidth="1.5" />
+          <circle cx="0" cy="0" r="10.5" fill="none" stroke="#b03030" strokeWidth="2" />
+          <circle cx="0" cy="0" r="6" fill="none" stroke="#2e7d4f" strokeWidth="1.5" />
+          <circle cx="0" cy="0" r="1.8" fill="#b03030" />
+          <circle cx="-4.5" cy="-5" r="2.6" fill="#fff" opacity="0.5" />
         </g>
 
         {/* coins */}
@@ -305,33 +357,52 @@ export default function Board({
             >
               <ellipse cx={c.pos.x} cy={c.pos.y + 3} rx="10.5" ry="3.6" fill="#3a2410" opacity="0.35" />
               {selected && <circle cx={c.pos.x} cy={c.pos.y} r="17" className="coin-halo" />}
+              {/* flat printed carrom man: side wall + matte face + printed rings */}
+              <circle cx={c.pos.x} cy={c.pos.y + 1.8} r={isQueen ? 12.5 : 11} fill={coinRim(c)} opacity="0.85" />
               <g filter="url(#soft)">
                 <circle
                   cx={c.pos.x}
                   cy={c.pos.y}
                   r={isQueen ? 12.5 : 11}
                   fill={coinGradient(c)}
-                  stroke={selected ? '#ffd54a' : isQueen ? '#ffd9de' : '#4a3018'}
+                  stroke={selected ? '#ffd54a' : coinRim(c)}
                   strokeWidth={selected ? 3 : 1.5}
                 />
               </g>
-              {/* engraved ring */}
               <circle
                 cx={c.pos.x}
                 cy={c.pos.y}
-                r={isQueen ? 8.5 : 7.5}
+                r={isQueen ? 9 : 7.8}
                 fill="none"
-                stroke={c.color === 'black' ? '#6b5d4d' : '#8a6f45'}
+                stroke={coinPrint(c)}
+                strokeWidth="1.6"
+                opacity="0.95"
+              />
+              <circle
+                cx={c.pos.x}
+                cy={c.pos.y}
+                r={isQueen ? 5 : 4}
+                fill="none"
+                stroke={coinPrint(c)}
                 strokeWidth="1"
-                opacity="0.8"
+                opacity="0.7"
               />
               {isQueen ? (
-                <text x={c.pos.x} y={c.pos.y + 5} textAnchor="middle" fontSize="12" fill="#fff" fontWeight="bold">
+                <text x={c.pos.x} y={c.pos.y + 4} textAnchor="middle" fontSize="9.5" fill="#fff" fontWeight="bold">
                   Q
                 </text>
               ) : (
-                <circle cx={c.pos.x} cy={c.pos.y} r="1.8" fill={c.color === 'black' ? '#6b5d4d' : '#fff'} opacity="0.9" />
+                <circle cx={c.pos.x} cy={c.pos.y} r="1.6" fill={coinPrint(c)} opacity="0.9" />
               )}
+              {/* soft top sheen */}
+              <path
+                d={`M ${c.pos.x - 6} ${c.pos.y - 5} A 8 8 0 0 1 ${c.pos.x + 2} ${c.pos.y - 7.5}`}
+                fill="none"
+                stroke="#fff"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                opacity="0.35"
+              />
             </g>
           );
         })}

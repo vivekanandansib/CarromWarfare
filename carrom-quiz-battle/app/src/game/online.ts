@@ -49,15 +49,34 @@ function statusOf(row: RoomRow): string {
   return '';
 }
 
+/** Which game a session row hosts, read from its own snapshot (connector-proof). */
+export function snapshotMode(row: RoomRow): 'quiz' | 'classic' | 'unknown' {
+  try {
+    const s = row.StateJson ? (JSON.parse(row.StateJson) as { mode?: unknown; status?: unknown }) : undefined;
+    if (s && typeof s === 'object') {
+      if (s.mode === 'classic') return 'classic';
+      if (s.status === 'inProgress' || s.status === 'completed') return 'quiz';
+    }
+  } catch {
+    /* ignore */
+  }
+  return 'unknown';
+}
+
 /** Find a joinable in-progress session by room code (client-side match). */
-export function findSessionByCode(rows: RoomRow[], code: string): RoomRow | undefined {
+export function findSessionByCode(
+  rows: RoomRow[],
+  code: string,
+  mode: 'quiz' | 'classic' = 'quiz',
+): RoomRow | undefined {
   const want = code.trim().toUpperCase();
   return rows.find((r) => {
     if (typeof r.SessionId !== 'string' || roomCodeForSession(r.SessionId) !== want) return false;
     const st = statusOf(r);
-    // Empty status = unknown (connector quirk) — allow the join attempt; the
-    // guest verifies the board snapshot exists before playing.
-    return st === 'inProgress' || st === '';
+    if (st !== 'inProgress' && st !== '') return false;
+    const snapMode = snapshotMode(r);
+    // Quiz rooms predate snapshots ('unknown'); classic rooms always carry theirs.
+    return mode === 'classic' ? snapMode === 'classic' : snapMode !== 'classic';
   });
 }
 

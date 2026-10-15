@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { describeRows, findSessionByCode, roomCodeForSession, shouldAdopt } from './online';
+import {
+  describeRows,
+  findSessionByCode,
+  roomCodeForSession,
+  shouldAdopt,
+  snapshotMode,
+} from './online';
 
 describe('room codes', () => {
   it('derives a stable 6-char readable code', () => {
@@ -61,5 +67,25 @@ describe('adopt logic', () => {
     expect(shouldAdopt({ serverJson: 'A', lastWrittenJson: 'A', lastSeenJson: null })).toBe(false); // own echo
     expect(shouldAdopt({ serverJson: 'A', lastWrittenJson: null, lastSeenJson: 'A' })).toBe(false); // unchanged
     expect(shouldAdopt({ serverJson: 'B', lastWrittenJson: 'A', lastSeenJson: 'A' })).toBe(true);
+  });
+
+  it('separates quiz and classic rooms by snapshot mode', () => {
+    const quiz = { ID: 20, SessionId: 'sess-q1', StateJson: JSON.stringify({ status: 'inProgress' }) };
+    const classic = {
+      ID: 21,
+      SessionId: 'sess-c1',
+      StateJson: JSON.stringify({ mode: 'classic', rules: { status: 'inProgress' } }),
+    };
+    const legacy = { ID: 22, SessionId: 'sess-old' };
+    expect(snapshotMode(quiz)).toBe('quiz');
+    expect(snapshotMode(classic)).toBe('classic');
+    expect(snapshotMode(legacy)).toBe('unknown');
+    // quiz join ignores classic rooms, accepts quiz + legacy
+    expect(findSessionByCode([quiz, classic, legacy], roomCodeForSession('sess-c1'))).toBeUndefined();
+    expect(findSessionByCode([quiz, classic, legacy], roomCodeForSession('sess-q1'))?.ID).toBe(20);
+    expect(findSessionByCode([quiz, classic, legacy], roomCodeForSession('sess-old'))?.ID).toBe(22);
+    // classic join only takes classic rooms
+    expect(findSessionByCode([quiz, classic, legacy], roomCodeForSession('sess-c1'), 'classic')?.ID).toBe(21);
+    expect(findSessionByCode([quiz, classic, legacy], roomCodeForSession('sess-q1'), 'classic')).toBeUndefined();
   });
 });
