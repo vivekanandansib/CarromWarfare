@@ -17,6 +17,8 @@ interface FlickBoardProps {
   striker: { x: number; y: number } | null;
   aim: AimState | null;
   interactive: boolean;
+  /** Player-2 perspective: board drawn rotated 180°, pointer mapped back. */
+  rotated?: boolean;
   onPointerDown: (pos: CoinPos) => void;
   onPointerMove: (pos: CoinPos) => void;
   onPointerEnd: () => void;
@@ -32,12 +34,11 @@ export const POCKETS: CoinPos[] = [
 
 const SERIF = "Cinzel, Marcellus, Georgia, 'Times New Roman', serif";
 
-function toLocal(e: React.PointerEvent<SVGSVGElement>): CoinPos {
+function toLocal(e: React.PointerEvent<SVGSVGElement>, rotated: boolean): CoinPos {
   const r = e.currentTarget.getBoundingClientRect();
-  return {
-    x: ((e.clientX - r.left) / r.width) * 400,
-    y: ((e.clientY - r.top) / r.height) * 400,
-  };
+  const x = ((e.clientX - r.left) / r.width) * 400;
+  const y = ((e.clientY - r.top) / r.height) * 400;
+  return rotated ? { x: 400 - x, y: 400 - y } : { x, y };
 }
 
 /** Small gold crown, centered on (0,0), ~18 wide. */
@@ -118,6 +119,7 @@ export default function FlickBoard({
   striker,
   aim,
   interactive,
+  rotated,
   onPointerDown,
   onPointerMove,
   onPointerEnd,
@@ -132,7 +134,7 @@ export default function FlickBoard({
     };
 
   return (
-    <div className="board-wrap">
+    <div className={`board-wrap${rotated ? ' rotated' : ''}`}>
       <svg
         className="board"
         viewBox="0 0 400 400"
@@ -142,11 +144,11 @@ export default function FlickBoard({
         onPointerDown={(e) => {
           if (!interactive) return;
           e.currentTarget.setPointerCapture(e.pointerId);
-          onPointerDown(toLocal(e));
+          onPointerDown(toLocal(e, !!rotated));
         }}
         onPointerMove={(e) => {
           if (!interactive) return;
-          onPointerMove(toLocal(e));
+          onPointerMove(toLocal(e, !!rotated));
         }}
         onPointerUp={() => interactive && onPointerEnd()}
         onPointerCancel={() => interactive && onPointerEnd()}

@@ -29,6 +29,7 @@ import type { CoinPos, PlayerNumber } from '../game/types';
 export interface ClassicShotInfo {
   shooter: PlayerNumber;
   pocketedNow: string[];
+  scoredIds: string[];
   points: number;
   foul: boolean;
   queenEvent: string;
@@ -70,14 +71,20 @@ function coinBodies(): Body[] {
   }));
 }
 
-function freshStriker(x: number): Body {
+function freshStriker(x: number, y: number = BASELINE_Y): Body {
   return {
     id: 'S',
-    pos: { x, y: BASELINE_Y },
+    pos: { x, y },
     vel: { x: 0, y: 0 },
     radius: STRIKER_R,
   };
 }
+
+/** Each player shoots from their own baseline: P1 bottom, P2 top. */
+const homeY = (p: PlayerNumber): number => (p === 1 ? BASELINE_Y : 88);
+/** Default aim from a baseline: straight toward the center. */
+const homeAim = (p: PlayerNumber): AimState =>
+  p === 1 ? { angleDeg: -90, power: 0.45 } : { angleDeg: 90, power: 0.45 };
 
 const clampStrikerX = (x: number) => Math.min(BASELINE_MAX_X, Math.max(BASELINE_MIN_X, x));
 
@@ -250,10 +257,12 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
         const res = resolveShot(rulesRef.current, []);
         setRules(res.state);
         pushSnapshot(res.state);
+        setAim(homeAim(res.state.currentPlayer));
         pushSnapshot(res.state);
         sinkRef.current?.onShot?.(res.state, {
           shooter: res.state.currentPlayer === 1 ? 2 : 1,
           pocketedNow: [],
+          scoredIds: [],
           points: 0,
           foul: false,
           queenEvent: res.queenEvent,
@@ -344,6 +353,8 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
       flash('Queen returns! Turn passes.', 'bad');
     } else if (res.points > 0) {
       flash(`Pocketed! +${res.points} pts — you play again.`, 'good');
+    } else if (res.pocketedNow.some((id) => id !== 'Q' && !res.scoredIds.includes(id))) {
+      flash(`Opponent's coin stays down — no points. Turn passes to ${res.state.playerNames[res.state.currentPlayer - 1]}.`, 'bad');
     } else {
       const nextName = res.state.playerNames[res.state.currentPlayer - 1];
       flash(`Nothing down — turn passes to ${nextName}.`, 'bad');
@@ -352,11 +363,12 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
     sinkRef.current?.onShot?.(res.state, {
       shooter,
       pocketedNow: res.pocketedNow,
+      scoredIds: res.scoredIds,
       points: res.points,
       foul: res.foul,
       queenEvent: res.queenEvent,
     });
-    // reconcile visuals: queen back if returned, dues back to center, fresh striker
+    // reconcile visuals: queen/dues back, striker to the next player's baseline
     const keep = simRef.current.filter((b) => b.id !== 'S' && b.id !== 'Q');
     if (res.state.queen === 'available' && !keep.some((b) => b.id === 'Q')) {
       keep.push({ id: 'Q', pos: { x: 200, y: 200 }, vel: { x: 0, y: 0 }, radius: QUEEN_R });
@@ -371,10 +383,11 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
         radius: COIN_R,
       });
     });
-    keep.push(freshStriker(strikerXRef.current));
+    strikerXRef.current = clampStrikerX(strikerXRef.current);
+    keep.push(freshStriker(strikerXRef.current, homeY(res.state.currentPlayer)));
     simRef.current = keep;
     setBodies(keep.map((b) => ({ ...b, pos: { ...b.pos }, vel: { ...b.vel } })));
-    setAim({ angleDeg: -90, power: 0.45 });
+    setAim(homeAim(res.state.currentPlayer));
     if (!res.state.finished) setPhase('aim');
   };
 
@@ -438,14 +451,18 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
   const handleKeyShot = (kind: 'left' | 'right' | 'up' | 'down' | 'powerUp' | 'powerDown' | 'fire') => {
     if (phase !== 'aim' || paused) return;
     if (net && rulesRef.current.currentPlayer !== net.mySeat) return;
-    if (phase !== 'aim' || paused) return;
+    // Mirror controls when the board is rotated for player 2.
+    const mirrored = Boolean(net && net.mySeat === 2) || (!net && rulesRef.current.currentPlayer === 2);
+    const s = mirrored ? -1 : 1;
+    // Aim angle range follows the shooter's baseline (down-board for player 2).
+    const downBoard = homeY(rulesRef.current.currentPlayer) !== BASELINE_Y;
     if (kind === 'fire') {
       fireDrag(vecFromAim(aimRef.current));
       return;
     }
     if (kind === 'left' || kind === 'right') {
-      // ArrowLeft/Right slide the striker along the baseline
-      const d = kind === 'left' ? -8 : 8;
+      // Arrows slide the striker along the baseline
+      const d = (kind === 'left' ? -8 : 8) * s;
       strikerXRef.current = clampStrikerX(strikerXRef.current + d);
       const st = simRef.current.find((b) => b.id === 'S');
       if (st) {
@@ -456,8 +473,14 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
     }
     // Up/Down rotate the aim; +/- change power
     setAim((a) => {
-      if (kind === 'up') return { ...a, angleDeg: Math.max(-160, a.angleDeg - 4) };
-      if (kind === 'down') return { ...a, angleDeg: Math.min(-20, a.angleDeg + 4) };
+      if (kind === 'up') {
+        const next = a.angleDeg - 4 * s;
+        return { ...a, angleDeg: downBoard ? Math.min(160, Math.max(20, next)) : Math.min(-20, Math.max(-160, next)) };
+      }
+      if (kind === 'down') {
+        const next = a.angleDeg + 4 * s;
+        return { ...a, angleDeg: downBoard ? Math.min(160, Math.max(20, next)) : Math.min(-20, Math.max(-160, next)) };
+      }
       if (kind === 'powerUp') return { ...a, power: Math.min(1, +(a.power + 0.1).toFixed(2)) };
       return { ...a, power: Math.max(0.1, +(a.power - 0.1).toFixed(2)) };
     });
@@ -524,6 +547,7 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
 
   const me: PlayerNumber = rules.currentPlayer;
   const myTurn = !net || rules.currentPlayer === net.mySeat;
+  const rotated = net ? net.mySeat === 2 : rules.currentPlayer === 2;
   const opponentName = rules.playerNames[net && net.mySeat === 1 ? 1 : 0];
   const myColorName = me === 1 ? 'White' : 'Black';
   const statusLine = !rules.breakTaken
@@ -585,6 +609,7 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
               striker={striker ? { x: striker.pos.x, y: striker.pos.y } : null}
               aim={phase === 'aim' && !paused && myTurn ? aim : null}
               interactive={phase === 'aim' && !paused && myTurn}
+              rotated={rotated}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerEnd={handlePointerEnd}

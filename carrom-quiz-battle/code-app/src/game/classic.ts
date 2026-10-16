@@ -72,6 +72,8 @@ export interface ShotResolution {
   points: number;
   /** Coins that stayed down this shot (excl. striker). */
   pocketedNow: string[];
+  /** Own-color coins among pocketedNow that actually scored. */
+  scoredIds: string[];
   /** Coins put back on the board (dues). */
   returnedNow: string[];
   foul: boolean;
@@ -124,6 +126,7 @@ export function resolveShot(
   const oppFell = fresh.filter((id) => id !== queenId && coinColorOf(id) !== myColor);
   const eligible = next.ownCount[player - 1] > 0;
   let points = 0;
+  const scoredIds: string[] = [];
   let queenEvent: ShotResolution['queenEvent'] = 'none';
   let breakFail = false;
   const returnedNow: string[] = [];
@@ -188,6 +191,7 @@ export function resolveShot(
         next.scores[player - 1] += own.length * CLASSIC_POINTS + CLASSIC_QUEEN_BONUS;
         next.ownCount[player - 1] += own.length;
         points = own.length * CLASSIC_POINTS + CLASSIC_QUEEN_BONUS;
+        scoredIds.push(...own);
         next.queen = 'secured';
         queenEvent = 'secured';
       } else {
@@ -209,6 +213,7 @@ export function resolveShot(
         next.scores[player - 1] += own.length * CLASSIC_POINTS;
         next.ownCount[player - 1] += own.length;
         points = own.length * CLASSIC_POINTS;
+        scoredIds.push(...own);
         if (own.length === 0) next.currentPlayer = other(player);
       } else if (own.length > 0) {
         // Same-stroke cover: secured immediately.
@@ -219,6 +224,7 @@ export function resolveShot(
         next.scores[player - 1] += own.length * CLASSIC_POINTS + CLASSIC_QUEEN_BONUS;
         next.ownCount[player - 1] += own.length;
         points = own.length * CLASSIC_POINTS + CLASSIC_QUEEN_BONUS;
+        scoredIds.push(...own);
         next.queen = 'secured';
         queenEvent = 'secured';
       } else {
@@ -234,6 +240,7 @@ export function resolveShot(
       next.scores[player - 1] += own.length * CLASSIC_POINTS;
       next.ownCount[player - 1] += own.length;
       points = own.length * CLASSIC_POINTS;
+      scoredIds.push(...own);
       if (own.length === 0) next.currentPlayer = other(player);
     }
   }
@@ -243,7 +250,7 @@ export function resolveShot(
     next.finished = true;
     next.winner = winner;
   }
-  return { state: next, points, pocketedNow, returnedNow, foul, breakFail, queenEvent };
+  return { state: next, points, pocketedNow, scoredIds, returnedNow, foul, breakFail, queenEvent };
 }
 
 /** Pay outstanding dues by returning pocketed own coins to the board. */

@@ -44,6 +44,7 @@ describe('classic turn rules (ICF-inspired, house-scored)', () => {
     const s = setup();
     const r = resolveShot(s, ['W1', 'B2'], { touched: true });
     expect(r.points).toBe(10);
+    expect(r.scoredIds).toEqual(['W1']);
     expect(r.state.scores).toEqual([10, 0]);
     expect(r.state.pocketed['B2']).toBe(true);
     expect(r.state.currentPlayer).toBe(1);

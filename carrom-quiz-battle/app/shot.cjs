@@ -90,6 +90,15 @@ function serve(port) {
     await page.mouse.up();
     await page.waitForTimeout(3500);
     await shot(page, 'classic-after-shot.png');
+    // keep firing with keyboard until the turn passes to P2, then capture the rotated view
+    for (let i = 0; i < 5; i++) {
+      const hint = await page.locator('.board-hint').textContent().catch(() => '');
+      if (/Ravi/.test(hint || '')) break;
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(4500);
+    }
+    await shot(page, 'classic-p2.png');
+    console.log('hint:', await page.locator('.board-hint').textContent().catch(() => '?'));
     console.log('errors:', errors.length ? errors.join(' | ') : 'none');
     await page.close();
   }

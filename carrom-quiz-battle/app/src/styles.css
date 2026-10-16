@@ -59,6 +59,8 @@ body {
 /* board */
 .board-col { min-width: 0; }
 .board-wrap { position: relative; width: 100%; max-width: 640px; margin: 0 auto; }
+.board-wrap.rotated svg.board { transform: rotate(180deg); transition: transform 0.45s ease; }
+.board-wrap svg.board { transition: transform 0.45s ease; }
 .board { width: 100%; height: auto; display: block; filter: drop-shadow(0 12px 24px rgba(0,0,0,0.5)); }
 .coin { cursor: pointer; outline: none; }
 .coin:focus-visible circle:last-of-type { stroke: var(--gold); stroke-width: 3.5; }

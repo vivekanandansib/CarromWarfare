@@ -358,27 +358,32 @@ export default function App() {
       currentPlayer: s.currentPlayer,
       gameStatus: status as 'inProgress' | 'completed',
     };
-    for (const id of info.pocketedNow) {
-      if (id === 'Q') {
-        if (info.queenEvent === 'pending') {
-          await saveCoinEvent(
-            createGameEvent(s.sessionId, 'coinPocketed', info.shooter, { coinId: 'Q', pointsAwarded: 0, ...base }),
-          );
-        } else if (info.queenEvent === 'secured') {
-          await saveCoinEvent(
-            createGameEvent(s.sessionId, 'coverSecured', info.shooter, { coinId: 'Q', pointsAwarded: 20, ...base }),
-          );
-        } else if (info.queenEvent === 'returned') {
-          await saveCoinEvent(
-            createGameEvent(s.sessionId, 'coverFailed', info.shooter, { coinId: 'Q', pointsAwarded: 0, ...base }),
-          );
-        }
-      } else {
-        await saveCoinEvent(
-          createGameEvent(s.sessionId, 'coinPocketed', info.shooter, { coinId: id, pointsAwarded: 10, ...base }),
-        );
-      }
-    }
+          for (const id of info.pocketedNow) {
+            if (id === 'Q') {
+              if (info.queenEvent === 'pending') {
+                await saveCoinEvent(
+                  createGameEvent(s.sessionId, 'coinPocketed', info.shooter, { coinId: 'Q', pointsAwarded: 0, ...base }),
+                );
+              } else if (info.queenEvent === 'secured') {
+                await saveCoinEvent(
+                  createGameEvent(s.sessionId, 'coverSecured', info.shooter, { coinId: 'Q', pointsAwarded: 20, ...base }),
+                );
+              } else if (info.queenEvent === 'returned') {
+                await saveCoinEvent(
+                  createGameEvent(s.sessionId, 'coverFailed', info.shooter, { coinId: 'Q', pointsAwarded: 0, ...base }),
+                );
+              }
+            } else if (info.scoredIds.includes(id)) {
+              await saveCoinEvent(
+                createGameEvent(s.sessionId, 'coinPocketed', info.shooter, { coinId: id, pointsAwarded: 10, ...base }),
+              );
+            } else {
+              // Opponent's coin: audit trail only, never points.
+              await saveCoinEvent(
+                createGameEvent(s.sessionId, 'coinPocketed', info.shooter, { coinId: id, pointsAwarded: 0, ...base }),
+              );
+            }
+          }
   };
 
   const classicSink = {
