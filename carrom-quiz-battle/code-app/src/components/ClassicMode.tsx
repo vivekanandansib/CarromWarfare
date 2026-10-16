@@ -88,6 +88,23 @@ const homeAim = (p: PlayerNumber): AimState =>
 
 const clampStrikerX = (x: number) => Math.min(BASELINE_MAX_X, Math.max(BASELINE_MIN_X, x));
 
+/** ICF placing: queen returns to the centre circle; if occupied, cover as much
+ *  red as possible — here, the nearest free point on small rings around it. */
+function queenSpot(bodies: Body[]): { x: number; y: number } {
+  const clear = (x: number, y: number) =>
+    bodies.every((b) => Math.hypot(b.pos.x - x, b.pos.y - y) >= 21);
+  if (clear(200, 200)) return { x: 200, y: 200 };
+  for (const r of [24, 30, 38]) {
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      const x = 200 + r * Math.cos(a);
+      const y = 200 + r * Math.sin(a);
+      if (clear(x, y)) return { x, y };
+    }
+  }
+  return { x: 200, y: 200 }; // fully covered — overlap (umpire would adjust)
+}
+
 export default function ClassicMode({ playerNames, targetScore, clockSecs, sink, sessionId, net, initialSnapshot, publishOpening, onExit }: ClassicModeProps) {
   const [rules, setRules] = useState<ClassicState>(() =>
     initialSnapshot ? { ...initialSnapshot.rules } : createClassic(sessionId ?? makeId('sess'), playerNames, targetScore),
@@ -368,20 +385,16 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
       foul: res.foul,
       queenEvent: res.queenEvent,
     });
-    // reconcile visuals: queen/dues back, striker to the next player's baseline
+    // reconcile visuals: queen to centre (or nearest free point), dues back, striker to next baseline
     const keep = simRef.current.filter((b) => b.id !== 'S' && b.id !== 'Q');
     if (res.state.queen === 'available' && !keep.some((b) => b.id === 'Q')) {
-      keep.push({ id: 'Q', pos: { x: 200, y: 200 }, vel: { x: 0, y: 0 }, radius: QUEEN_R });
+      const spot = queenSpot(keep);
+      keep.push({ id: 'Q', pos: spot, vel: { x: 0, y: 0 }, radius: QUEEN_R });
     }
-    res.returnedNow.forEach((id, i) => {
+    res.returnedNow.forEach((id) => {
       if (id === 'Q' || keep.some((b) => b.id === id)) return;
-      const a = (i / Math.max(1, res.returnedNow.length)) * Math.PI * 2;
-      keep.push({
-        id,
-        pos: { x: 200 + Math.cos(a) * 36, y: 200 + Math.sin(a) * 36 },
-        vel: { x: 0, y: 0 },
-        radius: COIN_R,
-      });
+      const spot = queenSpot(keep);
+      keep.push({ id, pos: spot, vel: { x: 0, y: 0 }, radius: COIN_R });
     });
     strikerXRef.current = clampStrikerX(strikerXRef.current);
     keep.push(freshStriker(strikerXRef.current, homeY(res.state.currentPlayer)));
