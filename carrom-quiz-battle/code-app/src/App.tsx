@@ -59,6 +59,9 @@ const SHOT_DESC: Record<ShotType, string> = {
   defensive: 'Easy questions, standard points',
 };
 
+/** Release stamp (version.ts is maintained by the push pipeline). */
+import { APP_VERSION } from './version';
+
 type Theme = 'classic' | 'midnight' | 'royal' | 'kingdom';
 const THEMES: Theme[] = ['classic', 'midnight', 'royal', 'kingdom'];
 
@@ -1203,6 +1206,9 @@ export default function App() {
               <li>Online rooms: host shares the 6-letter code, the guest joins from another laptop — same rules, mirrored board.</li>
             </ol>
           </div>
+          <p className="muted" style={{ textAlign: 'center' }}>
+            Build {APP_VERSION} · Classic Flick + Modern Kingdom board
+          </p>
         </div>
       </div>
     );
