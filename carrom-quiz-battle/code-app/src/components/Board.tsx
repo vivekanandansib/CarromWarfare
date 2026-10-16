@@ -267,11 +267,46 @@ export default function Board({
           fill="#e8c47c"
           opacity="0.8"
           fontWeight="bold"
+          className="brand brand-quiz"
         >
           CARROM QUIZ BATTLE
         </text>
-        <text x="200" y="381" textAnchor="middle" fontSize="10" letterSpacing="6" fill="#e8c47c" opacity="0.8">
+        <text
+          x="200"
+          y="26"
+          textAnchor="middle"
+          fontSize="11"
+          letterSpacing="3"
+          fill="#d4af37"
+          opacity="0.95"
+          fontWeight="bold"
+          className="brand brand-kingdom"
+        >
+          ♛ MODERN KINGDOM
+        </text>
+        <text
+          x="200"
+          y="381"
+          textAnchor="middle"
+          fontSize="10"
+          letterSpacing="6"
+          fill="#e8c47c"
+          opacity="0.8"
+          className="brand brand-quiz"
+        >
           ★ ★ ★
+        </text>
+        <text
+          x="200"
+          y="381"
+          textAnchor="middle"
+          fontSize="9"
+          letterSpacing="2"
+          fill="#d4af37"
+          opacity="0.9"
+          className="brand brand-kingdom"
+        >
+          PLAY • STRATEGIZE • RULE
         </text>
 
         {/* corner flourishes */}
@@ -304,6 +339,45 @@ export default function Board({
         <circle cx="200" cy="200" r="14" fill="#b03030" />
         <circle cx="200" cy="200" r="14" fill="none" stroke="#7d1f1f" strokeWidth="1.5" />
         <circle cx="200" cy="200" r="5" fill="#f3d9a4" opacity="0.9" />
+
+        {/* Modern Kingdom compass rose + crown + diamonds (theme-only overlay) */}
+        <g className="kingdom-only" aria-hidden="true">
+          <circle cx="200" cy="200" r="44" fill="none" stroke="#d4af37" strokeWidth="1.5" opacity="0.9" />
+          <polygon
+            points={Array.from({ length: 16 })
+              .map((_, i) => {
+                const r = i % 2 === 0 ? 40 : 17;
+                const a = (i / 16) * Math.PI * 2 - Math.PI / 2;
+                return `${200 + r * Math.cos(a)},${200 + r * Math.sin(a)}`;
+              })
+              .join(' ')}
+            fill="#c8102e"
+            opacity="0.85"
+          />
+          <polygon
+            points={Array.from({ length: 16 })
+              .map((_, i) => {
+                const r = i % 2 === 0 ? 29 : 17;
+                const a = (i / 16) * Math.PI * 2 - Math.PI / 2 + Math.PI / 16;
+                return `${200 + r * Math.cos(a)},${200 + r * Math.sin(a)}`;
+              })
+              .join(' ')}
+            fill="#d4af37"
+            opacity="0.9"
+          />
+          <g transform="translate(200,200)">
+            <path d="M -9 7 L -9 -3 L -4.5 1.5 L 0 -8 L 4.5 1.5 L 9 -3 L 9 7 Z" fill="#d4af37" stroke="#7a5c14" strokeWidth="1" />
+            <rect x="-9" y="7" width="18" height="3" rx="1" fill="#c8102e" />
+          </g>
+          {[
+            [200, 96],
+            [200, 304],
+            [96, 200],
+            [304, 200],
+          ].map(([x, y], i) => (
+            <path key={i} d={`M ${x} ${y - 7} L ${x + 5} ${y} L ${x} ${y + 7} L ${x - 5} ${y} Z`} fill="#c8102e" stroke="#d4af37" strokeWidth="1" />
+          ))}
+        </g>
 
         {/* baselines */}
         <line x1="110" y1="312" x2="290" y2="312" stroke="#26211c" strokeWidth="3" strokeLinecap="round" />
@@ -367,7 +441,7 @@ export default function Board({
         <g className="striker" style={{ transform: `translate(${strikerX}px, 312px)` }}>
           <ellipse cx="0" cy="12" rx="13" ry="3.5" fill="#000" opacity="0.3" />
           <circle cx="0" cy="1.5" r="14" fill="#4a3018" opacity="0.8" />
-          <circle cx="0" cy="0" r="14" fill="url(#strikerGrad)" stroke="#5b3a16" strokeWidth="1.5" />
+          <circle cx="0" cy="0" r="14" fill="url(#strikerGrad)" stroke="#5b3a16" strokeWidth="1.5" className="striker-face" />
           <circle cx="0" cy="0" r="10.5" fill="none" stroke="#b03030" strokeWidth="2" />
           <circle cx="0" cy="0" r="6" fill="none" stroke="#2e7d4f" strokeWidth="1.5" />
           <circle cx="0" cy="0" r="1.8" fill="#b03030" />

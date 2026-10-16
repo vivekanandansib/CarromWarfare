@@ -304,3 +304,25 @@ body[data-theme='royal'] .logo, body[data-theme='royal'] .board-hint { color: #f
 .theme-dot.classic { background: linear-gradient(135deg, #c98d4e, #7c4f22); }
 .theme-dot.midnight { background: linear-gradient(135deg, #4a5f96, #141b31); }
 .theme-dot.royal { background: linear-gradient(135deg, #a54451, #3d0f15); }
+.theme-dot.kingdom { background: linear-gradient(135deg, #d4af37 30%, #14100c 30%, #14100c 65%, #c8102e 65%); }
+
+/* ---------- Modern Kingdom theme ---------- */
+body[data-theme='kingdom'] {
+  background: radial-gradient(circle at 50% 18%, #241419 0%, #120a0e 55%, #050304 100%);
+}
+body[data-theme='kingdom'] .wood-hi { stop-color: #5a4230; }
+body[data-theme='kingdom'] .wood-mid { stop-color: #33241a; }
+body[data-theme='kingdom'] .wood-lo { stop-color: #14100c; }
+body[data-theme='kingdom'] .felt-hi { stop-color: #f2dca9; }
+body[data-theme='kingdom'] .felt-lo { stop-color: #d3a761; }
+body[data-theme='kingdom'] .frame-line { stroke: #d4af37; }
+body[data-theme='kingdom'] .flourish { fill: #d4af37; }
+body[data-theme='kingdom'] .design-ring { stroke: #d4af37; }
+body[data-theme='kingdom'] .logo, body[data-theme='kingdom'] .board-hint { color: #f5e6c8; }
+body[data-theme='kingdom'] .striker-face { fill: #1b1512; stroke: #d4af37; }
+body[data-theme='kingdom'] .queen-badge { border-color: #d4af37; }
+.brand-kingdom { display: none; }
+body[data-theme='kingdom'] .brand-kingdom { display: block; }
+body[data-theme='kingdom'] .brand-quiz { display: none; }
+.kingdom-only { display: none; }
+body[data-theme='kingdom'] .kingdom-only { display: block; }

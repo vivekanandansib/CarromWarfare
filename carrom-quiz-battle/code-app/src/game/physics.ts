@@ -22,7 +22,7 @@ export const POCKETS: Vec[] = [
   { x: 370, y: 370 },
 ];
 
-export const POCKET_CAPTURE_R = 15;
+export const POCKET_CAPTURE_R = 19;
 export const COIN_R = 11;
 export const QUEEN_R = 12.5;
 export const STRIKER_R = 14;
@@ -33,19 +33,22 @@ export const BASELINE_Y = 312;
 export const BASELINE_MIN_X = 110;
 export const BASELINE_MAX_X = 290;
 
-export const COIN_FRICTION = 1.35; // exponential damping /s
-export const STRIKER_FRICTION = 0.9;
-export const REST_COIN = 0.92; // coin-coin restitution
+/** Pocket mouth half-width along a cushion: rails end before the pocket so coins fall in. */
+export const POCKET_MOUTH = 26;
+
+export const COIN_FRICTION = 1.15; // exponential damping /s
+
+function inMouth(v: number): boolean {
+  return v < MIN + POCKET_MOUTH || v > MAX - POCKET_MOUTH;
+}
+export const STRIKER_FRICTION = 0.85;
+export const REST_COIN = 0.94; // coin-coin restitution
 export const REST_CUSHION = 0.75;
 export const STOP_SPEED = 6; // px/s — below this a body sleeps
 export const MAX_SHOT_SPEED = 950;
 
 export function speed(v: Vec): number {
   return Math.hypot(v.x, v.y);
-}
-
-function nearPocket(p: Vec): boolean {
-  return POCKETS.some((q) => Math.hypot(p.x - q.x, p.y - q.y) < POCKET_CAPTURE_R + 4);
 }
 
 export interface StepEvents {
@@ -80,33 +83,35 @@ export function stepBodies(
       b.pos.x += b.vel.x * h;
       b.pos.y += b.vel.y * h;
     }
-    // cushions (skip near pocket mouths so coins fall in)
+    // cushions (rails end at the pocket mouths so coins fall in;
+    // mouth proximity is measured ALONG each wall)
     for (const b of bodies) {
-      if (nearPocket(b.pos)) continue;
       const lo = MIN + b.radius;
       const hi = MAX - b.radius;
+      const nearCornerY = inMouth(b.pos.y); // for left/right walls
+      const nearCornerX = inMouth(b.pos.x); // for top/bottom walls
       if (b.pos.x < lo) {
-        b.pos.x = lo;
-        if (b.vel.x < 0) {
+        b.pos.x = nearCornerY ? b.pos.x : lo;
+        if (!nearCornerY && b.vel.x < 0) {
           b.vel.x = -b.vel.x * REST_CUSHION;
           ev.cushions++;
         }
       } else if (b.pos.x > hi) {
-        b.pos.x = hi;
-        if (b.vel.x > 0) {
+        b.pos.x = nearCornerY ? b.pos.x : hi;
+        if (!nearCornerY && b.vel.x > 0) {
           b.vel.x = -b.vel.x * REST_CUSHION;
           ev.cushions++;
         }
       }
       if (b.pos.y < lo) {
-        b.pos.y = lo;
-        if (b.vel.y < 0) {
+        b.pos.y = nearCornerX ? b.pos.y : lo;
+        if (!nearCornerX && b.vel.y < 0) {
           b.vel.y = -b.vel.y * REST_CUSHION;
           ev.cushions++;
         }
       } else if (b.pos.y > hi) {
-        b.pos.y = hi;
-        if (b.vel.y > 0) {
+        b.pos.y = nearCornerX ? b.pos.y : hi;
+        if (!nearCornerX && b.vel.y > 0) {
           b.vel.y = -b.vel.y * REST_CUSHION;
           ev.cushions++;
         }

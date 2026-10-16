@@ -59,13 +59,13 @@ const SHOT_DESC: Record<ShotType, string> = {
   defensive: 'Easy questions, standard points',
 };
 
-type Theme = 'classic' | 'midnight' | 'royal';
-const THEMES: Theme[] = ['classic', 'midnight', 'royal'];
+type Theme = 'classic' | 'midnight' | 'royal' | 'kingdom';
+const THEMES: Theme[] = ['classic', 'midnight', 'royal', 'kingdom'];
 
 function loadTheme(): Theme {
   try {
     const t = localStorage.getItem('cqb-theme');
-    if (t === 'midnight' || t === 'royal' || t === 'classic') return t;
+    if (t === 'midnight' || t === 'royal' || t === 'classic' || t === 'kingdom') return t;
   } catch {
     /* ignore */
   }
