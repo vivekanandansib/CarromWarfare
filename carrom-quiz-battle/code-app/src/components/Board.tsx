@@ -242,6 +242,38 @@ export default function Board({
         <rect x="34" y="34" width="332" height="332" rx="12" fill="url(#surface)" stroke="#5b3a16" strokeWidth="2" />
         <rect x="34" y="34" width="332" height="332" rx="12" fill="#dfb26e" filter="url(#grain)" opacity="0.35" />
 
+        {/* full diagonal foul lines, pocket to pocket, under everything */}
+        <line x1="34" y1="34" x2="366" y2="366" stroke="#8e2626" strokeWidth="2" opacity="0.45" />
+        <line x1="366" y1="34" x2="34" y2="366" stroke="#8e2626" strokeWidth="2" opacity="0.45" />
+
+        {/* frame corner ornaments + brand */}
+        {[
+          [26, 26],
+          [374, 26],
+          [26, 374],
+          [374, 374],
+        ].map(([x, y], i) => (
+          <g key={i}>
+            <circle cx={x} cy={y} r="6.5" fill="none" stroke="#e8c47c" strokeWidth="1.5" opacity="0.85" />
+            <circle cx={x} cy={y} r="2.2" fill="#b03030" />
+          </g>
+        ))}
+        <text
+          x="200"
+          y="26"
+          textAnchor="middle"
+          fontSize="10"
+          letterSpacing="3"
+          fill="#e8c47c"
+          opacity="0.8"
+          fontWeight="bold"
+        >
+          CARROM QUIZ BATTLE
+        </text>
+        <text x="200" y="381" textAnchor="middle" fontSize="10" letterSpacing="6" fill="#e8c47c" opacity="0.8">
+          ★ ★ ★
+        </text>
+
         {/* corner flourishes */}
         {[
           [52, 52],
@@ -267,8 +299,11 @@ export default function Board({
             />
           );
         })}
+        <circle cx="200" cy="200" r="22" fill="none" stroke="#26211c" strokeWidth="2" />
+        <circle cx="200" cy="200" r="18" fill="none" stroke="#b03030" strokeWidth="1.5" />
         <circle cx="200" cy="200" r="14" fill="#b03030" />
         <circle cx="200" cy="200" r="14" fill="none" stroke="#7d1f1f" strokeWidth="1.5" />
+        <circle cx="200" cy="200" r="5" fill="#f3d9a4" opacity="0.9" />
 
         {/* baselines */}
         <line x1="110" y1="312" x2="290" y2="312" stroke="#26211c" strokeWidth="3" strokeLinecap="round" />
@@ -301,10 +336,11 @@ export default function Board({
           </g>
         ))}
 
-        {/* pockets with depth */}
+        {/* pockets with depth + regulation red rings */}
         {POCKETS.map((p, i) => (
           <g key={i}>
-            <circle cx={p.x} cy={p.y} r="19" fill="none" stroke="#e8c47c" strokeWidth="2.5" opacity="0.85" />
+            <circle cx={p.x} cy={p.y} r="21" fill="none" stroke="#b03030" strokeWidth="2.5" opacity="0.9" />
+            <circle cx={p.x} cy={p.y} r="19" fill="none" stroke="#e8c47c" strokeWidth="1.5" opacity="0.7" />
             <circle cx={p.x} cy={p.y} r="16.5" fill="url(#pocketGrad)" />
             <circle cx={p.x} cy={p.y} r="16.5" fill="none" stroke="#000" strokeWidth="1.5" opacity="0.7" />
           </g>
