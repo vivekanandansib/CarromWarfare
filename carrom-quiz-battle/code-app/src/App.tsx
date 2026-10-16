@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Board, { missMidpoint, nearestPocket, waypointFor } from './components/Board';
 import type { PocketAnim } from './components/Board';
-import { Confetti, FxLayer, PlayerPanel, QueenBadge, Toast } from './components/Panels';
+import { CoinRain, Confetti, FxLayer, PlayerPanel, QueenBadge, Toast } from './components/Panels';
 import type { Burst, Floater } from './components/Panels';
 import ClassicMode from './components/ClassicMode';
 import type { ClassicShotInfo } from './components/ClassicMode';
@@ -934,10 +934,12 @@ export default function App() {
                 {spError} <button onClick={() => setSpError(null)} aria-label="Dismiss error">✕</button>
               </div>
             )}
-            <div className="screen">
-              <div className="hero">
-                <h1>🎲 Classic Flick</h1>
-                <p className="tagline">Real flick physics. Same laptop, or online across two laptops.</p>
+            <div className="screen wide">
+              <div className="hero-premium">
+                <CoinRain pieces={6} />
+                <div className="hero-kicker">REAL FLICK PHYSICS</div>
+                <h1 className="hero-title">Classic Flick</h1>
+                <p className="hero-sub">Same laptop, or online across two laptops.</p>
               </div>
               <div className="card">
                 <h2>Play mode</h2>
@@ -1048,25 +1050,34 @@ export default function App() {
             {spError} <button onClick={() => setSpError(null)} aria-label="Dismiss error">✕</button>
           </div>
         )}
-        <div className="screen">
-          <div className="hero">
-            <h1>🎯 Carrom Quiz Battle</h1>
-            <p className="tagline">Pocket coins with your brain. Two players, one board, quiz-powered shots.</p>
-          </div>
-          <div className="card">
-            <div className="shot-grid mode-pick" role="radiogroup" aria-label="Game">
-              <button
-                role="radio"
-                aria-checked={true}
-                className="shot active"
-                onClick={() => undefined}
-              >
-                🎯 Quiz Battle
-              </button>
-              <button role="radio" aria-checked={false} className="shot" onClick={() => setAppTab('classic')}>
-                🎲 Classic Flick
-              </button>
+        <div className="screen wide">
+          <div className="hero-premium">
+            <CoinRain />
+            <div className="hero-kicker">TWO PLAYERS · ONE BOARD · SAVED TO SHAREPOINT</div>
+            <h1 className="hero-title">Carrom Quiz Battle</h1>
+            <p className="hero-sub">Pocket coins with your brain — or your flick. Quiz brains meet carrom hands.</p>
+            <div className="stat-chips" aria-label="Game highlights">
+              <span className="stat-chip">🎯 Quiz + 🎲 Flick</span>
+              <span className="stat-chip">🌐 Online rooms</span>
+              <span className="stat-chip">🏆 Champions board</span>
             </div>
+          </div>
+          <div className="mode-cards" role="radiogroup" aria-label="Game">
+            <button role="radio" aria-checked={true} className="mode-card active" onClick={() => undefined}>
+              <span className="mode-emoji">🎯</span>
+              <span className="mode-name">Quiz Battle</span>
+              <span className="mode-desc">Answer to pocket · shots pay up to +15</span>
+            </button>
+            <button
+              role="radio"
+              aria-checked={false}
+              className="mode-card"
+              onClick={() => setAppTab('classic')}
+            >
+              <span className="mode-emoji">🎲</span>
+              <span className="mode-name">Classic Flick</span>
+              <span className="mode-desc">Real flick physics · ICF-style rules</span>
+            </button>
           </div>
           <div className="card">
             <h2>New game</h2>

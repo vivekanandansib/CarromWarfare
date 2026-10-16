@@ -2,6 +2,41 @@ import { useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import type { PlayerNumber, QueenState } from '../game/types';
 
+const RAIN_COLORS = ['#ffd54a', '#d7263d', '#f7f1e3', '#ff8ba0'];
+
+export function CoinRain({ pieces = 9 }: { pieces?: number }) {
+  const items = useMemo(
+    () =>
+      Array.from({ length: pieces }).map((_, i) => ({
+        id: i,
+        x: (i * 37 + 11) % 100,
+        s: 8 + ((i * 13) % 10),
+        d: 5 + ((i * 29) % 40) / 10,
+        dl: ((i * 53) % 30) / 10,
+        c: RAIN_COLORS[i % RAIN_COLORS.length],
+      })),
+    [pieces],
+  );
+  return (
+    <div className="coin-rain" aria-hidden="true">
+      {items.map((p) => (
+        <i
+          key={p.id}
+          style={
+            {
+              left: `${p.x}%`,
+              '--s': `${p.s}px`,
+              '--d': `${p.d}s`,
+              '--dl': `${p.dl}s`,
+              '--c': p.c,
+            } as CSSProperties
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
 export function PlayerPanel({
   name,
   score,

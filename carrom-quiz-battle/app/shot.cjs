@@ -47,6 +47,8 @@ function serve(port) {
     const errors = [];
     page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
     await page.goto('http://localhost:5199/', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(600);
+    await shot(page, 'menu.png');
     await page.getByRole('button', { name: 'Start battle' }).click();
     await page.waitForTimeout(800);
     await shot(page, 'quiz-board.png');

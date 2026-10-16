@@ -61,8 +61,6 @@ body {
 .board-wrap { position: relative; width: 100%; max-width: 640px; margin: 0 auto; }
 .board-wrap.rotated svg.board { transform: rotate(180deg); transition: transform 0.45s ease; }
 .board-wrap svg.board { transition: transform 0.45s ease; }
-.champs { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
-.champs li::marker { font-weight: 800; color: var(--red); }
 .board { width: 100%; height: auto; display: block; filter: drop-shadow(0 12px 24px rgba(0,0,0,0.5)); }
 .coin { cursor: pointer; outline: none; }
 .coin:focus-visible circle:last-of-type { stroke: var(--gold); stroke-width: 3.5; }
@@ -186,6 +184,62 @@ body {
 .toast.good { border-color: #7ddf9a; }
 .toast.bad { border-color: #ff9a9a; }
 .screen { max-width: 720px; margin: 24px auto; display: grid; gap: 14px; }
+.screen.wide { max-width: 880px; }
+
+/* ---------- premium lobby ---------- */
+.hero-premium {
+  position: relative; text-align: center; padding: 34px 16px 10px;
+  overflow: hidden; border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 213, 74, 0.14), transparent 60%),
+    linear-gradient(180deg, rgba(36, 26, 14, 0.9), rgba(23, 14, 6, 0.4));
+  border: 1px solid #6b4c26;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 213, 74, 0.25);
+}
+.hero-kicker {
+  letter-spacing: 5px; font-size: 0.75rem; font-weight: 700; color: var(--gold);
+  margin-bottom: 6px;
+}
+.hero-title {
+  margin: 0; font-size: clamp(2.1rem, 6vw, 3.2rem); font-weight: 900; line-height: 1.05;
+  background: linear-gradient(180deg, #fff3c4 10%, var(--gold) 45%, #b8860b 75%, #f7dc8a 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+.hero-sub { color: #d9c49a; margin: 8px 0 0; }
+.coin-rain { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.coin-rain i {
+  position: absolute; bottom: -30px; border-radius: 50%;
+  width: var(--s); height: var(--s); background: var(--c);
+  opacity: 0.5; animation: coinrise var(--d) linear var(--dl) infinite;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
+}
+@keyframes coinrise {
+  to { transform: translateY(-320px) rotate(200deg); opacity: 0; }
+}
+.mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 560px) { .mode-cards { grid-template-columns: 1fr; } }
+.mode-card {
+  position: relative; text-align: left; padding: 16px; border-radius: var(--radius);
+  background: var(--card); border: 3px solid transparent; cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  min-height: 44px; font-size: 1rem; color: var(--ink);
+}
+.mode-card:hover { transform: translateY(-3px); }
+.mode-card.active {
+  border-color: var(--gold);
+  box-shadow: 0 0 16px rgba(255, 213, 74, 0.45), 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.mode-emoji { font-size: 2rem; display: block; margin-bottom: 6px; }
+.mode-name { font-weight: 800; font-size: 1.1rem; display: block; }
+.mode-desc { font-size: 0.85rem; color: #7a6a55; display: block; margin-top: 2px; }
+.stat-chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
+.stat-chip {
+  background: rgba(36, 26, 14, 0.85); border: 1px solid #6b4c26; color: #f7e8c8;
+  border-radius: 999px; padding: 5px 12px; font-size: 0.82rem; font-weight: 600;
+}
+.version-line { text-align: center; color: #8a765c; font-size: 0.8rem; }
 .hero h1 { color: #f7e8c8; margin: 0; font-size: 2rem; }
 .tagline { color: #d9c49a; margin: 4px 0 0; }
 .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
@@ -208,6 +262,8 @@ body {
 .frame-line { stroke: #e8c47c; }
 .flourish { fill: #e8c47c; opacity: 0.85; }
 .design-ring { stroke: #b03030; fill: none; opacity: 0.7; }
+.grain-frame { fill: #7c4f22; }
+.grain-felt { fill: #dfb26e; }
 
 body[data-theme='midnight'] {
   background: radial-gradient(circle at 50% 20%, #101a33 0%, #0a0f22 60%, #05070f 100%);
@@ -220,6 +276,8 @@ body[data-theme='midnight'] .felt-lo { stop-color: #54a3c2; }
 body[data-theme='midnight'] .frame-line { stroke: #7ef0ff; }
 body[data-theme='midnight'] .flourish { fill: #7ef0ff; }
 body[data-theme='midnight'] .design-ring { stroke: #7ef0ff; }
+body[data-theme='midnight'] .grain-frame { fill: #232c47; }
+body[data-theme='midnight'] .grain-felt { fill: #5aa7c4; }
 body[data-theme='midnight'] .logo, body[data-theme='midnight'] .board-hint { color: #d8f4ff; }
 
 body[data-theme='royal'] {
@@ -232,6 +290,8 @@ body[data-theme='royal'] .felt-hi { stop-color: #f4ddab; }
 body[data-theme='royal'] .felt-lo { stop-color: #d3a055; }
 body[data-theme='royal'] .frame-line { stroke: #ffd54a; }
 body[data-theme='royal'] .flourish { fill: #ffd54a; }
+body[data-theme='royal'] .grain-frame { fill: #6b1f2a; }
+body[data-theme='royal'] .grain-felt { fill: #d9a45f; }
 body[data-theme='royal'] .logo, body[data-theme='royal'] .board-hint { color: #ffe9c4; }
 
 /* ---------- aim guide + pocket flash ---------- */
@@ -299,6 +359,8 @@ body[data-theme='royal'] .logo, body[data-theme='royal'] .board-hint { color: #f
   padding: 6px 12px 6px 18px; border-radius: 8px;
 }
 .mode-pick { margin-bottom: 12px; }
+.champs { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+.champs li::marker { font-weight: 800; color: var(--red); }
 .theme-pick { display: flex; gap: 6px; align-items: center; }
 .theme-dot {
   width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent;
@@ -322,6 +384,8 @@ body[data-theme='kingdom'] .felt-lo { stop-color: #d3a761; }
 body[data-theme='kingdom'] .frame-line { stroke: #d4af37; }
 body[data-theme='kingdom'] .flourish { fill: #d4af37; }
 body[data-theme='kingdom'] .design-ring { stroke: #d4af37; }
+body[data-theme='kingdom'] .grain-frame { fill: #241a12; }
+body[data-theme='kingdom'] .grain-felt { fill: #d9b06e; }
 body[data-theme='kingdom'] .logo, body[data-theme='kingdom'] .board-hint { color: #f5e6c8; }
 body[data-theme='kingdom'] .striker-face { fill: #1b1512; stroke: #d4af37; }
 body[data-theme='kingdom'] .queen-badge { border-color: #d4af37; }

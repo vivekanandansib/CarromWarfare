@@ -184,6 +184,62 @@ body {
 .toast.good { border-color: #7ddf9a; }
 .toast.bad { border-color: #ff9a9a; }
 .screen { max-width: 720px; margin: 24px auto; display: grid; gap: 14px; }
+.screen.wide { max-width: 880px; }
+
+/* ---------- premium lobby ---------- */
+.hero-premium {
+  position: relative; text-align: center; padding: 34px 16px 10px;
+  overflow: hidden; border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 213, 74, 0.14), transparent 60%),
+    linear-gradient(180deg, rgba(36, 26, 14, 0.9), rgba(23, 14, 6, 0.4));
+  border: 1px solid #6b4c26;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 213, 74, 0.25);
+}
+.hero-kicker {
+  letter-spacing: 5px; font-size: 0.75rem; font-weight: 700; color: var(--gold);
+  margin-bottom: 6px;
+}
+.hero-title {
+  margin: 0; font-size: clamp(2.1rem, 6vw, 3.2rem); font-weight: 900; line-height: 1.05;
+  background: linear-gradient(180deg, #fff3c4 10%, var(--gold) 45%, #b8860b 75%, #f7dc8a 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+.hero-sub { color: #d9c49a; margin: 8px 0 0; }
+.coin-rain { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.coin-rain i {
+  position: absolute; bottom: -30px; border-radius: 50%;
+  width: var(--s); height: var(--s); background: var(--c);
+  opacity: 0.5; animation: coinrise var(--d) linear var(--dl) infinite;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
+}
+@keyframes coinrise {
+  to { transform: translateY(-320px) rotate(200deg); opacity: 0; }
+}
+.mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 560px) { .mode-cards { grid-template-columns: 1fr; } }
+.mode-card {
+  position: relative; text-align: left; padding: 16px; border-radius: var(--radius);
+  background: var(--card); border: 3px solid transparent; cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  min-height: 44px; font-size: 1rem; color: var(--ink);
+}
+.mode-card:hover { transform: translateY(-3px); }
+.mode-card.active {
+  border-color: var(--gold);
+  box-shadow: 0 0 16px rgba(255, 213, 74, 0.45), 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.mode-emoji { font-size: 2rem; display: block; margin-bottom: 6px; }
+.mode-name { font-weight: 800; font-size: 1.1rem; display: block; }
+.mode-desc { font-size: 0.85rem; color: #7a6a55; display: block; margin-top: 2px; }
+.stat-chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
+.stat-chip {
+  background: rgba(36, 26, 14, 0.85); border: 1px solid #6b4c26; color: #f7e8c8;
+  border-radius: 999px; padding: 5px 12px; font-size: 0.82rem; font-weight: 600;
+}
+.version-line { text-align: center; color: #8a765c; font-size: 0.8rem; }
 .hero h1 { color: #f7e8c8; margin: 0; font-size: 2rem; }
 .tagline { color: #d9c49a; margin: 4px 0 0; }
 .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
