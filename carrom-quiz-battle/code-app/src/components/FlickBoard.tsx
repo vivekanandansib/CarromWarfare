@@ -338,19 +338,19 @@ export default function FlickBoard({
         />
         <rect x="34" y="34" width="332" height="332" rx="8" fill="none" stroke="#241910" strokeWidth="1.5" />
 
-        {/* L4 field geometry: nested rectangles + burgundy markers */}
+        {/* L4 field geometry: nested rectangles, mirrored about the center */}
         <g>
-          <rect x="72" y="80" width="256" height="232" fill="none" stroke="#241910" strokeWidth="2.5" />
-          <rect x="86" y="88" width="228" height="216" fill="none" stroke="#241910" strokeWidth="2" />
+          <rect x="72" y="80" width="256" height="240" fill="none" stroke="#241910" strokeWidth="2.5" />
+          <rect x="86" y="88" width="228" height="224" fill="none" stroke="#241910" strokeWidth="2" />
           {[
             [72, 80],
             [328, 80],
-            [72, 312],
-            [328, 312],
-            [72, 150],
-            [72, 262],
-            [328, 150],
-            [328, 262],
+            [72, 320],
+            [328, 320],
+            [72, 155],
+            [72, 245],
+            [328, 155],
+            [328, 245],
           ].map(([x, y], i) => (
             <g key={i}>
               <circle cx={x} cy={y} r="7.5" fill="none" stroke="#D9A441" strokeWidth="1.5" />
@@ -364,8 +364,8 @@ export default function FlickBoard({
         {[
           { x1: 72, y1: 80, x2: 40, y2: 48 },
           { x1: 328, y1: 80, x2: 360, y2: 48 },
-          { x1: 72, y1: 312, x2: 40, y2: 344 },
-          { x1: 328, y1: 312, x2: 360, y2: 344 },
+          { x1: 72, y1: 320, x2: 40, y2: 352 },
+          { x1: 328, y1: 320, x2: 360, y2: 352 },
         ].map((a, i) => (
           <line
             key={i}
@@ -379,39 +379,37 @@ export default function FlickBoard({
           />
         ))}
 
-        {/* curved rotational arrows per corner */}
+        {/* curved rotational arrows per corner (mirrored sweeps) */}
         {[
-          'M 62 118 A 46 46 0 0 1 108 66',
-          'M 338 118 A 46 46 0 0 0 292 66',
-          'M 62 282 A 46 46 0 0 0 108 334',
-          'M 338 282 A 46 46 0 0 1 292 334',
+          'M 62 122 A 46 46 0 0 1 112 70',
+          'M 338 122 A 46 46 0 0 0 288 70',
+          'M 62 278 A 46 46 0 0 0 112 330',
+          'M 338 278 A 46 46 0 0 1 288 330',
         ].map((d, i) => (
           <g key={i}>
             <path d={d} fill="none" stroke="#241910" strokeWidth="2" markerEnd="url(#karrow)" />
           </g>
         ))}
 
-        {/* cardinal ornaments N/S/E/W */}
+        {/* cardinal ornaments N/S/E/W (S diamond clears the baseline) */}
         <g>
           <path d="M 200 46 L 206 62 L 200 78 L 194 62 Z" fill="#780E19" stroke="#D9A441" strokeWidth="1" />
-          <Diamond x={200} y={86} s={0.9} />
+          <Diamond x={200} y={82} s={0.9} />
           <path d="M 200 354 L 206 338 L 200 322 L 194 338 Z" fill="#780E19" stroke="#D9A441" strokeWidth="1" />
-          <Diamond x={200} y={314} s={0.9} />
+          <Diamond x={200} y={318} s={0.9} />
           <path d="M 46 200 L 62 194 L 78 200 L 62 206 Z" fill="#780E19" stroke="#D9A441" strokeWidth="1" />
           <Diamond x={86} y={200} s={0.9} />
           <path d="M 354 200 L 338 194 L 322 200 L 338 206 Z" fill="#780E19" stroke="#D9A441" strokeWidth="1" />
           <Diamond x={314} y={200} s={0.9} />
         </g>
 
-        {/* baselines with end circles */}
+        {/* baselines with end circles (no center dots — the diamonds own the axis) */}
         <line x1="110" y1="312" x2="290" y2="312" stroke="#241910" strokeWidth="3" strokeLinecap="round" />
         <circle cx="128" cy="312" r="9" fill="none" stroke="#780E19" strokeWidth="2.5" />
         <circle cx="272" cy="312" r="9" fill="none" stroke="#780E19" strokeWidth="2.5" />
-        <circle cx="200" cy="312" r="3.5" fill="#780E19" />
         <line x1="110" y1="88" x2="290" y2="88" stroke="#241910" strokeWidth="3" strokeLinecap="round" />
         <circle cx="128" cy="88" r="9" fill="none" stroke="#780E19" strokeWidth="2.5" />
         <circle cx="272" cy="88" r="9" fill="none" stroke="#780E19" strokeWidth="2.5" />
-        <circle cx="200" cy="88" r="3.5" fill="#780E19" />
 
         {/* L5 compass rose */}
         <g>
