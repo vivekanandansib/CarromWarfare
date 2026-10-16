@@ -25,8 +25,6 @@ import {
 } from '../game/physics';
 import { sound } from '../game/sound';
 import type { CoinPos, PlayerNumber } from '../game/types';
-import type { BoardThemeName } from '../game/boardTheme';
-import { PALETTES } from '../game/boardTheme';
 
 export interface ClassicShotInfo {
   shooter: PlayerNumber;
@@ -56,8 +54,6 @@ interface ClassicModeProps {
   sink?: ClassicSink;
   sessionId?: string;
   net?: ClassicNet;
-  /** Board paint. Defaults to classic. */
-  theme?: BoardThemeName;
   /** Online guest joining mid-game: start from this snapshot, never publish over the host. */
   initialSnapshot?: ClassicSnapshot | null;
   /** Host publishes the opening position on mount (default true). Guests must pass false. */
@@ -85,7 +81,7 @@ function freshStriker(x: number): Body {
 
 const clampStrikerX = (x: number) => Math.min(BASELINE_MAX_X, Math.max(BASELINE_MIN_X, x));
 
-export default function ClassicMode({ playerNames, targetScore, clockSecs, sink, sessionId, net, theme, initialSnapshot, publishOpening, onExit }: ClassicModeProps) {
+export default function ClassicMode({ playerNames, targetScore, clockSecs, sink, sessionId, net, initialSnapshot, publishOpening, onExit }: ClassicModeProps) {
   const [rules, setRules] = useState<ClassicState>(() =>
     initialSnapshot ? { ...initialSnapshot.rules } : createClassic(sessionId ?? makeId('sess'), playerNames, targetScore),
   );
@@ -589,7 +585,6 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
               striker={striker ? { x: striker.pos.x, y: striker.pos.y } : null}
               aim={phase === 'aim' && !paused && myTurn ? aim : null}
               interactive={phase === 'aim' && !paused && myTurn}
-              palette={PALETTES[theme ?? 'classic']}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerEnd={handlePointerEnd}

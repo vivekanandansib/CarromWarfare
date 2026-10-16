@@ -347,7 +347,6 @@ export default function App() {
         playerNames={classic.names}
         targetScore={classic.target}
         clockSecs={clockSecs}
-        theme={theme}
         onExit={() => {
           setClassic(null);
           setGame(null);
