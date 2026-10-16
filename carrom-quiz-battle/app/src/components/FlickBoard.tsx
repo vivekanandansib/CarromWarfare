@@ -379,12 +379,12 @@ export default function FlickBoard({
           />
         ))}
 
-        {/* curved rotational arrows per corner (mirrored sweeps, inside the inner border) */}
+        {/* curved rotational arrows per corner (mirrored pairs, inside the inner border) */}
         {[
-          'M 96 142 A 46 46 0 0 1 146 90',
-          'M 304 142 A 46 46 0 0 0 254 90',
-          'M 96 258 A 46 46 0 0 0 146 310',
-          'M 304 258 A 46 46 0 0 1 254 310',
+          'M 94 130 A 34 34 0 0 1 128 96',
+          'M 306 130 A 34 34 0 0 0 272 96',
+          'M 94 270 A 34 34 0 0 0 128 304',
+          'M 306 270 A 34 34 0 0 1 272 304',
         ].map((d, i) => (
           <g key={i}>
             <path d={d} fill="none" stroke="#241910" strokeWidth="2" markerEnd="url(#karrow)" />
