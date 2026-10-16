@@ -204,6 +204,8 @@ body {
 .frame-line { stroke: #e8c47c; }
 .flourish { fill: #e8c47c; opacity: 0.85; }
 .design-ring { stroke: #b03030; fill: none; opacity: 0.7; }
+.grain-frame { fill: #7c4f22; }
+.grain-felt { fill: #dfb26e; }
 
 body[data-theme='midnight'] {
   background: radial-gradient(circle at 50% 20%, #101a33 0%, #0a0f22 60%, #05070f 100%);
@@ -216,6 +218,8 @@ body[data-theme='midnight'] .felt-lo { stop-color: #54a3c2; }
 body[data-theme='midnight'] .frame-line { stroke: #7ef0ff; }
 body[data-theme='midnight'] .flourish { fill: #7ef0ff; }
 body[data-theme='midnight'] .design-ring { stroke: #7ef0ff; }
+body[data-theme='midnight'] .grain-frame { fill: #232c47; }
+body[data-theme='midnight'] .grain-felt { fill: #5aa7c4; }
 body[data-theme='midnight'] .logo, body[data-theme='midnight'] .board-hint { color: #d8f4ff; }
 
 body[data-theme='royal'] {
@@ -228,6 +232,8 @@ body[data-theme='royal'] .felt-hi { stop-color: #f4ddab; }
 body[data-theme='royal'] .felt-lo { stop-color: #d3a055; }
 body[data-theme='royal'] .frame-line { stroke: #ffd54a; }
 body[data-theme='royal'] .flourish { fill: #ffd54a; }
+body[data-theme='royal'] .grain-frame { fill: #6b1f2a; }
+body[data-theme='royal'] .grain-felt { fill: #d9a45f; }
 body[data-theme='royal'] .logo, body[data-theme='royal'] .board-hint { color: #ffe9c4; }
 
 /* ---------- aim guide + pocket flash ---------- */
@@ -318,6 +324,8 @@ body[data-theme='kingdom'] .felt-lo { stop-color: #d3a761; }
 body[data-theme='kingdom'] .frame-line { stroke: #d4af37; }
 body[data-theme='kingdom'] .flourish { fill: #d4af37; }
 body[data-theme='kingdom'] .design-ring { stroke: #d4af37; }
+body[data-theme='kingdom'] .grain-frame { fill: #241a12; }
+body[data-theme='kingdom'] .grain-felt { fill: #d9b06e; }
 body[data-theme='kingdom'] .logo, body[data-theme='kingdom'] .board-hint { color: #f5e6c8; }
 body[data-theme='kingdom'] .striker-face { fill: #1b1512; stroke: #d4af37; }
 body[data-theme='kingdom'] .queen-badge { border-color: #d4af37; }

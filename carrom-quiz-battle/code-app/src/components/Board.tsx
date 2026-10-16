@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Coin, CoinPos, QueenState, ShotType } from '../game/types';
+import type { BoardPalette } from '../game/boardTheme';
+import { PALETTES } from '../game/boardTheme';
 
 export interface PocketAnim {
   kind: 'pocket' | 'miss';
@@ -21,6 +23,8 @@ interface BoardProps {
   aimTo?: CoinPos | null;
   /** Pocket that just swallowed a coin — flash ring. */
   pocketFlash?: CoinPos | null;
+  /** Explicit paint (theme switching without CSS-dependent SVG). Defaults to classic. */
+  palette?: BoardPalette;
   onSelect: (coinId: string) => void;
   onAnimDone: () => void;
 }
@@ -112,6 +116,7 @@ export default function Board({
   strikerX,
   aimTo,
   pocketFlash,
+  palette,
   onSelect,
   onAnimDone,
 }: BoardProps) {
@@ -150,6 +155,7 @@ export default function Board({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pocketAnim]);
 
+  const P = palette ?? PALETTES.classic;
   const animatingId = pocketAnim?.coin.id;
 
   const handleKey = (e: React.KeyboardEvent, id: string) => {
@@ -169,13 +175,13 @@ export default function Board({
       >
         <defs>
           <radialGradient id="wood" cx="50%" cy="38%" r="78%">
-            <stop offset="0%" className="wood-hi" />
-            <stop offset="62%" className="wood-mid" />
-            <stop offset="100%" className="wood-lo" />
+            <stop offset="0%" stopColor={P.woodHi} />
+            <stop offset="62%" stopColor={P.woodMid} />
+            <stop offset="100%" stopColor={P.woodLo} />
           </radialGradient>
           <radialGradient id="surface" cx="50%" cy="46%" r="68%">
-            <stop offset="0%" className="felt-hi" />
-            <stop offset="100%" className="felt-lo" />
+            <stop offset="0%" stopColor={P.feltHi} />
+            <stop offset="100%" stopColor={P.feltLo} />
           </radialGradient>
           <radialGradient id="coinWhite" cx="38%" cy="32%" r="80%">
             <stop offset="0%" stopColor="#fffdf6" />
@@ -196,7 +202,7 @@ export default function Board({
             <stop offset="100%" stopColor="#a31328" />
           </linearGradient>
           <marker id="pocketArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M 0 1 L 9 5 L 0 9 z" fill="#b03030" />
+            <path d="M 0 1 L 9 5 L 0 9 z" fill={P.arrow} />
           </marker>
           <radialGradient id="coinBlack" cx="38%" cy="32%" r="80%">
             <stop offset="0%" stopColor="#6b5d4d" />
@@ -234,17 +240,17 @@ export default function Board({
 
         {/* frame */}
         <rect x="0" y="0" width="400" height="400" rx="26" fill="url(#wood)" />
-        <rect x="0" y="0" width="400" height="400" rx="26" fill="#7c4f22" filter="url(#grain)" opacity="0.5" />
+        <rect x="0" y="0" width="400" height="400" rx="26" fill={P.grainFrame} filter="url(#grain)" opacity="0.5" />
         <rect x="14" y="14" width="372" height="372" rx="18" fill="none" stroke="#3f2810" strokeWidth="5" />
-        <rect x="18" y="18" width="364" height="364" rx="15" fill="none" className="frame-line" strokeWidth="1.5" opacity="0.8" />
+        <rect x="18" y="18" width="364" height="364" rx="15" fill="none" stroke={P.frameLine} strokeWidth="1.5" opacity="0.8" />
 
         {/* playing surface */}
         <rect x="34" y="34" width="332" height="332" rx="12" fill="url(#surface)" stroke="#5b3a16" strokeWidth="2" />
-        <rect x="34" y="34" width="332" height="332" rx="12" fill="#dfb26e" filter="url(#grain)" opacity="0.35" />
+        <rect x="34" y="34" width="332" height="332" rx="12" fill={P.grainFelt} filter="url(#grain)" opacity="0.35" />
 
         {/* full diagonal foul lines, pocket to pocket, under everything */}
-        <line x1="34" y1="34" x2="366" y2="366" stroke="#8e2626" strokeWidth="2" opacity="0.45" />
-        <line x1="366" y1="34" x2="34" y2="366" stroke="#8e2626" strokeWidth="2" opacity="0.45" />
+        <line x1="34" y1="34" x2="366" y2="366" stroke={P.diagonal} strokeWidth="2" opacity="0.45" />
+        <line x1="366" y1="34" x2="34" y2="366" stroke={P.diagonal} strokeWidth="2" opacity="0.45" />
 
         {/* frame corner ornaments + brand */}
         {[
@@ -254,8 +260,8 @@ export default function Board({
           [374, 374],
         ].map(([x, y], i) => (
           <g key={i}>
-            <circle cx={x} cy={y} r="6.5" fill="none" stroke="#e8c47c" strokeWidth="1.5" opacity="0.85" />
-            <circle cx={x} cy={y} r="2.2" fill="#b03030" />
+            <circle cx={x} cy={y} r="6.5" fill="none" stroke={P.flourish} strokeWidth="1.5" opacity="0.85" />
+            <circle cx={x} cy={y} r="2.2" fill={P.centerRed} />
           </g>
         ))}
         <text
@@ -320,8 +326,8 @@ export default function Board({
         ))}
 
         {/* center design */}
-        <circle cx="200" cy="200" r="62" fill="none" className="design-ring" strokeWidth="2" />
-        <circle cx="200" cy="200" r="52" fill="none" stroke="#b03030" strokeWidth="2.5" />
+        <circle cx="200" cy="200" r="62" fill="none" stroke={P.designRing} strokeWidth="2" />
+        <circle cx="200" cy="200" r="52" fill="none" stroke={P.centerRed} strokeWidth="2.5" />
         {Array.from({ length: 8 }).map((_, i) => {
           const a = (i / 8) * Math.PI * 2;
           return (
@@ -330,13 +336,13 @@ export default function Board({
               cx={200 + 57 * Math.cos(a)}
               cy={200 + 57 * Math.sin(a)}
               r="2.4"
-              fill="#b03030"
+              fill={P.centerRed}
             />
           );
         })}
-        <circle cx="200" cy="200" r="22" fill="none" stroke="#26211c" strokeWidth="2" />
-        <circle cx="200" cy="200" r="18" fill="none" stroke="#b03030" strokeWidth="1.5" />
-        <circle cx="200" cy="200" r="14" fill="#b03030" />
+        <circle cx="200" cy="200" r="22" fill="none" stroke={P.centerDark} strokeWidth="2" />
+        <circle cx="200" cy="200" r="18" fill="none" stroke={P.centerRed} strokeWidth="1.5" />
+        <circle cx="200" cy="200" r="14" fill={P.centerRed} />
         <circle cx="200" cy="200" r="14" fill="none" stroke="#7d1f1f" strokeWidth="1.5" />
         <circle cx="200" cy="200" r="5" fill="#f3d9a4" opacity="0.9" />
 
@@ -381,13 +387,13 @@ export default function Board({
 
         {/* baselines */}
         <line x1="110" y1="312" x2="290" y2="312" stroke="#26211c" strokeWidth="3" strokeLinecap="round" />
-        <circle cx="128" cy="312" r="9" fill="none" stroke="#b03030" strokeWidth="2.5" />
-        <circle cx="272" cy="312" r="9" fill="none" stroke="#b03030" strokeWidth="2.5" />
-        <circle cx="200" cy="312" r="3.5" fill="#b03030" />
+        <circle cx="128" cy="312" r="9" fill="none" stroke={P.centerRed} strokeWidth="2.5" />
+        <circle cx="272" cy="312" r="9" fill="none" stroke={P.centerRed} strokeWidth="2.5" />
+        <circle cx="200" cy="312" r="3.5" fill={P.centerRed} />
         <line x1="110" y1="88" x2="290" y2="88" stroke="#26211c" strokeWidth="3" strokeLinecap="round" />
-        <circle cx="128" cy="88" r="9" fill="none" stroke="#b03030" strokeWidth="2.5" />
-        <circle cx="272" cy="88" r="9" fill="none" stroke="#b03030" strokeWidth="2.5" />
-        <circle cx="200" cy="88" r="3.5" fill="#b03030" />
+        <circle cx="128" cy="88" r="9" fill="none" stroke={P.centerRed} strokeWidth="2.5" />
+        <circle cx="272" cy="88" r="9" fill="none" stroke={P.centerRed} strokeWidth="2.5" />
+        <circle cx="200" cy="88" r="3.5" fill={P.centerRed} />
 
         {/* diagonal pocket arrows — the classic carrom marks */}
         {[
@@ -402,11 +408,11 @@ export default function Board({
               y1={a.y1}
               x2={a.x2}
               y2={a.y2}
-              stroke="#b03030"
+              stroke={P.arrow}
               strokeWidth="2.5"
               markerEnd="url(#pocketArrow)"
             />
-            <circle cx={a.x1} cy={a.y1} r="3.5" fill="#b03030" />
+            <circle cx={a.x1} cy={a.y1} r="3.5" fill={P.arrow} />
           </g>
         ))}
 
@@ -441,7 +447,7 @@ export default function Board({
         <g className="striker" style={{ transform: `translate(${strikerX}px, 312px)` }}>
           <ellipse cx="0" cy="12" rx="13" ry="3.5" fill="#000" opacity="0.3" />
           <circle cx="0" cy="1.5" r="14" fill="#4a3018" opacity="0.8" />
-          <circle cx="0" cy="0" r="14" fill="url(#strikerGrad)" stroke="#5b3a16" strokeWidth="1.5" className="striker-face" />
+          <circle cx="0" cy="0" r="14" fill={P.strikerBase} stroke="#5b3a16" strokeWidth="1.5" />
           <circle cx="0" cy="0" r="10.5" fill="none" stroke="#b03030" strokeWidth="2" />
           <circle cx="0" cy="0" r="6" fill="none" stroke="#2e7d4f" strokeWidth="1.5" />
           <circle cx="0" cy="0" r="1.8" fill="#b03030" />

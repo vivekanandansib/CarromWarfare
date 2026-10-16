@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Board, { missMidpoint, nearestPocket, waypointFor, type PocketAnim } from './components/Board';
 import ClassicMode from './components/ClassicMode';
+import { PALETTES } from './game/boardTheme';
+import type { BoardThemeName } from './game/boardTheme';
 import { Confetti, FxLayer, PlayerPanel, QueenBadge, Toast } from './components/Panels';
 import type { Burst, Floater } from './components/Panels';
 import QuestionDialog from './components/QuestionDialog';
@@ -32,7 +34,7 @@ const SHOTS: { id: ShotType; label: string; desc: string }[] = [
 
 const SHOT_BONUS: Record<ShotType, number> = { straight: 0, cut: 2, bank: 5, defensive: 0 };
 
-type Theme = 'classic' | 'midnight' | 'royal' | 'kingdom';
+type Theme = BoardThemeName;
 const THEMES: Theme[] = ['classic', 'midnight', 'royal', 'kingdom'];
 
 function loadTheme(): Theme {
@@ -345,6 +347,7 @@ export default function App() {
         playerNames={classic.names}
         targetScore={classic.target}
         clockSecs={clockSecs}
+        theme={theme}
         onExit={() => {
           setClassic(null);
           setGame(null);
@@ -445,6 +448,7 @@ export default function App() {
               strikerX={strikerX}
               aimTo={game.phase === 'asking' && activeCoin ? activeCoin.pos : null}
               pocketFlash={pocketFlash}
+              palette={PALETTES[theme]}
               onSelect={handleSelect}
               onAnimDone={handleAnimDone}
             />

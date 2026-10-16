@@ -7,6 +7,7 @@ import ClassicMode from './components/ClassicMode';
 import type { ClassicShotInfo } from './components/ClassicMode';
 import QuestionDialog from './components/QuestionDialog';
 import { createGameEvent } from './game/events';
+import { PALETTES } from './game/boardTheme';
 import { openingSnapshot } from './game/classic';
 import type { ClassicState } from './game/classic';
 import {
@@ -987,6 +988,7 @@ export default function App() {
             playerNames={[p1.trim() || 'Asha', p2.trim() || 'Ravi']}
             targetScore={target > 0 ? target : 50}
             clockSecs={clockSecs}
+            theme={theme}
             sink={classicSink}
             onExit={() => {
               setClassicGame(null);
@@ -1010,6 +1012,7 @@ export default function App() {
           }
           targetScore={target > 0 ? target : 50}
           clockSecs={clockSecs}
+          theme={theme}
           sink={{ onShot: classicOnlineShot }}
           initialSnapshot={classicGame.seat === 2 ? guestSnap : null}
           publishOpening={classicGame.seat === 1}
@@ -1318,6 +1321,7 @@ export default function App() {
               strikerX={strikerX}
               aimTo={game.phase === 'asking' && isMyTurn && activeCoin ? activeCoin.pos : null}
               pocketFlash={pocketFlash}
+              palette={PALETTES[theme]}
               onSelect={handleSelect}
               onAnimDone={handleAnimDone}
             />
