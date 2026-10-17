@@ -100,6 +100,16 @@ export function Toast({ msg, tone }: { msg: string | null; tone: 'good' | 'bad' 
   );
 }
 
+export interface TurnEntry {
+  player: 1 | 2;
+  points: number;
+  /** Quiz: answer verdict. Classic: scoring shot (true) vs dry/foul (false). */
+  correct: boolean;
+  coinIds: string[];
+  /** Queen lens: 'secured' | 'pending' | 'failed' | 'returned' | '' */
+  queen: string;
+}
+
 export interface Burst {
   id: number;
   x: number;
@@ -115,6 +125,40 @@ export interface Floater {
 }
 
 const SPARK_COLORS = ['#ffd54a', '#ffffff', '#ff8ba0', '#ffb14a'];
+
+export function queenHolderOf(log: TurnEntry[], names: [string, string]): string {
+  const secured = [...log].reverse().find((e) => e.queen === 'secured');
+  if (!secured) return '—';
+  return names[secured.player - 1];
+}
+
+export function accuracyOf(log: TurnEntry[], player: 1 | 2): number {
+  const shots = log.filter((e) => e.player === player);
+  if (!shots.length) return 0;
+  const correct = shots.filter((e) => e.correct).length;
+  return Math.round((correct / shots.length) * 100);
+}
+
+export function bestStreakOf(log: TurnEntry[], player: 1 | 2): number {
+  let best = 0;
+  let cur = 0;
+  for (const e of log) {
+    if (e.player === player && e.correct) {
+      cur++;
+      best = Math.max(best, cur);
+    } else {
+      cur = 0;
+    }
+  }
+  return best;
+}
+
+export function coinsByColor(log: TurnEntry[]): { white: number; black: number; queen: number } {
+  const w = log.filter((e) => e.coinIds.some((id) => id.startsWith('w'))).length;
+  const b = log.filter((e) => e.coinIds.some((id) => id.startsWith('b'))).length;
+  const q = log.filter((e) => e.coinIds.some((id) => id === 'Q')).length;
+  return { white: w, black: b, queen: q };
+}
 
 /** Pocket-burst sparks + floating score popups, positioned in board % coordinates. */
 export function FxLayer({ bursts, floaters }: { bursts: Burst[]; floaters: Floater[] }) {
@@ -172,6 +216,49 @@ export function Confetti({ pieces = 70 }: { pieces?: number }) {
           key={p.id}
           style={{ '--x': `${p.x}%`, '--d': `${p.d}s`, '--dl': `${p.dl}s`, '--c': p.c } as CSSProperties}
         />
+      ))}
+    </div>
+  );
+}
+
+export function ScoreRace({ s1, s2, n1, n2, target }: { s1: number; s2: number; n1: string; n2: string; target: number }) {
+  return (
+    <div className="score-race" aria-label={`${n1}: ${s1} - ${s2} ${n2}`}>
+      <div>{n1}: {s1}</div>
+      <div>{n2}: {s2}</div>
+      <div>Target: {target}</div>
+    </div>
+  );
+}
+
+export interface DonutSeg {
+  label: string;
+  value: number;
+  color: string;
+}
+
+export function Donut({ segments, centerTop, centerBottom }: { segments: DonutSeg[]; centerTop: string; centerBottom: string }) {
+  return (
+    <div className="donut" aria-label="pocketed">
+      <div className="donut-total">{centerTop}</div>
+      <div className="donut-bottom">{centerBottom}</div>
+      {segments.map((seg, i) => (
+        <div key={i} className="donut-segment" style={{ background: seg.color }}>
+          {seg.label}: {seg.value}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function StatGrid({ stats }: { stats: { label: string; value: string }[] }) {
+  return (
+    <div className="stat-grid" aria-label="statistics">
+      {stats.map((s, i) => (
+        <div key={i} className="stat-item">
+          <span className="stat-label">{s.label}</span>
+          <span className="stat-value">{s.value}</span>
+        </div>
       ))}
     </div>
   );

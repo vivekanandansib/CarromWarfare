@@ -1,11 +1,11 @@
-# Carrom Quiz Battle
+# Carrom Warfare
 
 Two-player, turn-based quiz + carrom game. Pick a coin → answer a question → pocket it.
 Queen needs a cover. First to the target score wins.
 
 - **Phase 1 (done, playable):** standalone React+TS app in `app/` — real engine, tests, persistence.
 - **Phase 2 (deployed to Power Platform):**
-  - Power Apps **code app** `Carrom Quiz Battle` in `code-app/` — React 19 + SharePoint
+  - Power Apps **code app** `Carrom Warfare` in `code-app/` — React 19 + SharePoint
     connector (4 lists as data sources), pushed to the `CarromBattle` solution.
     **Play:** https://apps.powerapps.com/play/e/73f52288-2cbd-e6f3-b14d-6e12b85e8fdb/app/d202983a-b850-40ab-83e0-314f2a90ecee?tenantId=c1f700ef-8f79-4deb-8546-8712177d669e
   - PCF `CarromQuizBoard` in `pcf/` (builds green, pushed + in solution) — reusable

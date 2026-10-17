@@ -1,4 +1,4 @@
-# Carrom Quiz Battle — Architecture & Data Contracts (Phase 1 + plan for Phase 2/3)
+# Carrom Warfare — Architecture & Data Contracts (Phase 1 + plan for Phase 2/3)
 
 ## 1. Repository structure
 
@@ -138,6 +138,13 @@ except during a pending cover, where it returns the Queen. The clock pauses
 with the game and never runs during animations. Timing lives in the UI layer;
 the engine exposes `answerQuestion(-1)` (never correct), `completeMiss`, and
 `expireIdleTurn` — all covered by unit tests.
+
+**Match time limit** (default 10 minutes = 600s, configurable per session): a
+global countdown that tracks total elapsed time across all turns. When the
+match clock reaches zero the game ends immediately (no further turns, no
+rematch in-room). The match timer is UI-visible via a countdown display and
+pauses when the game is paused or between turns. This mirrors tournament
+practice where full games have strict time caps.
 
 ## 7. Question service
 

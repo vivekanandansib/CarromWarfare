@@ -1,5 +1,5 @@
 // =============================================================================
-// Carrom Quiz Battle — Canvas App Power Fx Reference
+// Carrom Warfare — Canvas App Power Fx Reference
 // =============================================================================
 //
 // Paste these formulas into the Canvas app in Power Apps Studio.

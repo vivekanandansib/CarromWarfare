@@ -275,7 +275,7 @@ export default function Board({
           fontWeight="bold"
           className="brand brand-quiz"
         >
-          CARROM QUIZ BATTLE
+          CARROM WARFARE
         </text>
         <text
           x="200"

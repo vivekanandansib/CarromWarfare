@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import Board, { missMidpoint, nearestPocket, waypointFor } from './components/Board';
 import type { PocketAnim } from './components/Board';
-import { CoinRain, Confetti, FxLayer, PlayerPanel, QueenBadge, Toast } from './components/Panels';
-import type { Burst, Floater } from './components/Panels';
+import { CoinRain, Confetti, Donut, FxLayer, PlayerPanel, QueenBadge, ScoreRace, StatGrid, Toast } from './components/Panels';
+import type { Burst, Floater, TurnEntry } from './components/Panels';
+import { accuracyOf, bestStreakOf, coinsByColor, queenHolderOf } from './components/Panels';
 import ClassicMode from './components/ClassicMode';
 import type { ClassicShotInfo } from './components/ClassicMode';
 import QuestionDialog from './components/QuestionDialog';
@@ -92,10 +93,13 @@ export default function App() {
   const [target, setTarget] = useState(50);
   const [clockSecs, setClockSecs] = useState(30);
   const [timeLeft, setTimeLeft] = useState(30);
+  const [matchClockSecs] = useState(600);
+  const [matchTimeLeft, setMatchTimeLeft] = useState(600);
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [pocketFlash, setPocketFlash] = useState<CoinPos | null>(null);
   const [bursts, setBursts] = useState<Burst[]>([]);
   const [floaters, setFloaters] = useState<Floater[]>([]);
+  const [turnLog, setTurnLog] = useState<TurnEntry[]>([]);
   const toastTimer = useRef<number>(0);
   const sessionRowId = useRef<string | null>(null);
   const expiredRef = useRef(false);
@@ -224,6 +228,7 @@ export default function App() {
     setSpError(null);
     setTimeLeft(clockSecs);
     expiredRef.current = false;
+    setTurnLog([]);
     sessionRowId.current = null;
     void (async () => {
       try {
@@ -257,6 +262,16 @@ export default function App() {
       const res = expireIdleTurn(game);
       setGame(res.state);
       persist(res.events, res.state);
+      setTurnLog((l) => [
+        ...l,
+        {
+          player: game.currentPlayer,
+          points: 0,
+          correct: false,
+          coinIds: [],
+          queen: res.events.some((e) => e.eventType === 'coverFailed') ? 'failed' : '',
+        },
+      ]);
       const nextName = res.state.playerNames[res.state.currentPlayer - 1];
       flash(
         res.events.some((e) => e.eventType === 'coverFailed')
@@ -268,6 +283,33 @@ export default function App() {
       /* ignore */
     }
   };
+
+  // Shot clock: reset on every turn/phase change; expiry forfeits the turn.
+  useEffect(() => {
+    setTimeLeft(clockSecs);
+    expiredRef.current = false;
+  }, [game?.phase, game?.currentPlayer, game?.sessionId, clockSecs, game === null]);
+
+  useEffect(() => {
+    if (!game) return;
+    if (game.phase === 'finished') {
+      setMatchTimeLeft(matchClockSecs);
+      return;
+    }
+    if (paused) return;
+    if (matchTimeLeft <= 0) {
+      if (!expiredRef.current) {
+        expiredRef.current = true;
+        sound.tick();
+        setGame(null);
+        flash(`Match time expired!`, 'bad');
+      }
+      return;
+    }
+    if (matchTimeLeft <= 10) sound.tick();
+    const t = window.setTimeout(() => setMatchTimeLeft((v) => v - 1), 1000);
+    return () => window.clearTimeout(t);
+  }, [game?.phase, paused, matchClockSecs, matchTimeLeft, paused]);
 
   // Shot clock: reset on every turn/phase change; expiry forfeits the turn.
   useEffect(() => {
@@ -291,8 +333,6 @@ export default function App() {
     const t = window.setTimeout(() => setTimeLeft((v) => v - 1), 1000);
     return () => window.clearTimeout(t);
   });
-
-  // Online mirror: adopt remote snapshots (not our own echo, never mid-animation).
   useEffect(() => {
     if (mode !== 'online' || !game) return;
     const t = window.setInterval(() => {
@@ -686,6 +726,7 @@ export default function App() {
     persist(res.events, res.state);
     const wasCover = game.awaitingCover && game.activeCoinId !== 'Q';
     const coin = game.activeCoinId ? getCoin(game, game.activeCoinId) : undefined;
+    const shooter = game.currentPlayer;
     if (res.correct) {
       sound.correct();
       sound.strike();
@@ -708,6 +749,16 @@ export default function App() {
       sound.wrong();
       sound.strike();
       setGame(res.state);
+      setTurnLog((l) => [
+        ...l,
+        {
+          player: shooter,
+          points: 0,
+          correct: false,
+          coinIds: game.activeCoinId ? [game.activeCoinId] : [],
+          queen: wasCover ? 'failed' : '',
+        },
+      ]);
       if (coin) {
         // Miss animation: the coin slides toward the pocket, veers off, stays in play.
         const from = { ...coin.pos };
@@ -744,6 +795,17 @@ export default function App() {
         setPocketAnim(null);
         setGame(res.state);
         persist(res.events, res.state);
+        const failed = res.events.some((e) => e.eventType === 'coverFailed');
+        setTurnLog((l) => [
+          ...l,
+          {
+            player: game.currentPlayer,
+            points: 0,
+            correct: false,
+            coinIds: game.activeCoinId ? [game.activeCoinId] : [],
+            queen: failed ? 'failed' : '',
+          },
+        ]);
       } catch (e) {
         setPocketAnim(null);
         flash(e instanceof Error ? e.message : 'Miss failed', 'bad');
@@ -756,6 +818,20 @@ export default function App() {
       setPocketAnim(null);
       setGame(res.state);
       persist(res.events, res.state);
+      const pocketEv = res.events.find(
+        (e) => e.eventType === 'coinPocketed' || e.eventType === 'coverSecured',
+      );
+      const secured = res.events.some((e) => e.eventType === 'coverSecured');
+      setTurnLog((l) => [
+        ...l,
+        {
+          player: game.currentPlayer,
+          points: res.pointsAwarded,
+          correct: true,
+          coinIds: pocketEv?.coinId ? [pocketEv.coinId] : [],
+          queen: secured ? 'secured' : res.state.queenState === 'pendingCover' ? 'pending' : '',
+        },
+      ]);
       if (target) {
         flashPocket(target);
         spawnBurst(target.x, target.y);
@@ -815,6 +891,7 @@ export default function App() {
     setPaused(false);
     setTimeLeft(clockSecs);
     expiredRef.current = false;
+    setTurnLog([]);
     sessionRowId.current = null;
     void (async () => {
       try {
@@ -831,7 +908,7 @@ export default function App() {
       <div className="app">
         <div className="screen">
           <div className="hero">
-            <h1>🎯 Carrom Quiz Battle</h1>
+            <h1>♛ Carrom Warfare</h1>
           </div>
           <div className="card">
             {loadError ? (
@@ -1054,7 +1131,7 @@ export default function App() {
           <div className="hero-premium">
             <CoinRain />
             <div className="hero-kicker">TWO PLAYERS · ONE BOARD · SAVED TO SHAREPOINT</div>
-            <h1 className="hero-title">Carrom Quiz Battle</h1>
+            <h1 className="hero-title">Carrom Warfare</h1>
             <p className="hero-sub">Pocket coins with your brain — or your flick. Quiz brains meet carrom hands.</p>
             <div className="stat-chips" aria-label="Game highlights">
               <span className="stat-chip">🎯 Quiz + 🎲 Flick</span>
@@ -1233,6 +1310,9 @@ export default function App() {
 
   if (game.phase === 'finished') {
     const [s1, s2] = game.scores;
+    const coins = coinsByColor(turnLog);
+    const total = coins.white + coins.black + coins.queen;
+    const best = Math.max(bestStreakOf(turnLog, 1), bestStreakOf(turnLog, 2));
     return (
       <div className="app">
         <Confetti pieces={game.winner === 0 ? 30 : 80} />
@@ -1251,6 +1331,23 @@ export default function App() {
             <p className="final-score">
               {game.playerNames[0]} <strong>{s1}</strong> — <strong>{s2}</strong> {game.playerNames[1]}
             </p>
+            <Donut
+              segments={[
+                { label: 'White', value: coins.white, color: '#f3ead3' },
+                { label: 'Black', value: coins.black, color: '#6b5d4d' },
+                { label: 'Queen', value: coins.queen, color: '#d7263d' },
+              ]}
+              centerTop={String(total)}
+              centerBottom="pocketed"
+            />
+            <StatGrid
+              stats={[
+                { label: `${game.playerNames[0]} accuracy`, value: String(accuracyOf(turnLog, 1)) },
+                { label: `${game.playerNames[1]} accuracy`, value: String(accuracyOf(turnLog, 2)) },
+                { label: 'Best streak', value: best > 0 ? `${best} pockets` : '—' },
+                { label: 'Queen', value: queenHolderOf(turnLog, game.playerNames) },
+              ]}
+            />
             <p className="muted">Results saved to SharePoint.</p>
             <div className="btn-row center">
               <button className="btn primary" onClick={restart} autoFocus>
@@ -1282,7 +1379,7 @@ export default function App() {
         </div>
       )}
       <header className="topbar">
-        <h1 className="logo">🎯 Carrom Quiz Battle</h1>
+        <h1 className="logo">♛ Carrom Warfare</h1>
         {(game.phase === 'ready' || game.phase === 'asking') &&
           !paused &&
           (mode === 'local' || game.currentPlayer === mySeat) && (
@@ -1322,6 +1419,14 @@ export default function App() {
       </header>
 
       <Toast msg={toast?.msg ?? null} tone={toast?.tone ?? 'info'} />
+
+      <ScoreRace
+        s1={game.scores[0]}
+        s2={game.scores[1]}
+        n1={game.playerNames[0]}
+        n2={game.playerNames[1]}
+        target={game.targetScore}
+      />
 
       <main className="layout">
         <div className="board-col">

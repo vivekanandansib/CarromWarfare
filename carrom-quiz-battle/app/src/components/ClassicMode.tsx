@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import FlickBoard, { type AimState } from './FlickBoard';
 import { nearestPocket } from './Board';
-import { Confetti, FxLayer, PlayerPanel, QueenBadge, Toast } from './Panels';
-import type { Burst, Floater } from './Panels';
+import { Confetti, Donut, FxLayer, PlayerPanel, QueenBadge, ScoreRace, StatGrid, Toast } from './Panels';
+import type { Burst, Floater, TurnEntry } from './Panels';
+import { accuracyOf, bestStreakOf, coinsByColor, queenHolderOf } from './Panels';
 import { createClassic, resolveShot, type ClassicState } from '../game/classic';
 import {
   serializeClassicSnapshot,
@@ -118,6 +119,7 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
   const [timeLeft, setTimeLeft] = useState(clockSecs);
   const [bursts, setBursts] = useState<Burst[]>([]);
   const [floaters, setFloaters] = useState<Floater[]>([]);
+  const [turnLog, setTurnLog] = useState<TurnEntry[]>([]);
 
   const simRef = useRef<Body[]>([]);
   const capturedRef = useRef<{ id: string; at: Vec }[]>([]);
@@ -271,9 +273,11 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
       if (!expiredRef.current) {
         expiredRef.current = true;
         sound.wrong();
+        const shooter = rulesRef.current.currentPlayer;
         const res = resolveShot(rulesRef.current, []);
         setRules(res.state);
         pushSnapshot(res.state);
+        setTurnLog((l) => [...l, { player: shooter, points: 0, correct: false, coinIds: [], queen: res.queenEvent }]);
         setAim(homeAim(res.state.currentPlayer));
         pushSnapshot(res.state);
         sinkRef.current?.onShot?.(res.state, {
@@ -333,6 +337,16 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
     const res = resolveShot(rulesRef.current, ids, { touched: touchedRef.current });
     setRules(res.state);
     pushSnapshot(res.state);
+    setTurnLog((l) => [
+      ...l,
+      {
+        player: shooter,
+        points: res.points,
+        correct: res.points > 0 && !res.foul,
+        coinIds: [...res.pocketedNow, ...(res.queenEvent === 'secured' || res.queenEvent === 'pending' ? ['Q'] : [])],
+        queen: res.queenEvent,
+      },
+    ]);
     // fx per pocketed coin
     for (const c of captured) {
       if (c.id === 'S') continue;
@@ -511,6 +525,7 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
     const g = createClassic(sessionId ?? makeId('sess'), rulesRef.current.playerNames, rulesRef.current.targetScore);
     setRules(g);
     rulesRef.current = g;
+    setTurnLog([]);
     strikerXRef.current = 200;
     simRef.current = [...coinBodies(), freshStriker(200)];
     setBodies(simRef.current.map((b) => ({ ...b, pos: { ...b.pos }, vel: { ...b.vel } })));
@@ -527,6 +542,9 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
 
   if (rules.finished) {
     const [s1, s2] = rules.scores;
+    const coins = coinsByColor(turnLog);
+    const total = coins.white + coins.black + coins.queen;
+    const best = Math.max(bestStreakOf(turnLog, 1), bestStreakOf(turnLog, 2));
     return (
       <div className="app">
         <Confetti pieces={rules.winner === 0 ? 30 : 80} />
@@ -540,6 +558,23 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
             <p className="final-score">
               {rules.playerNames[0]} <strong>{s1}</strong> — <strong>{s2}</strong> {rules.playerNames[1]}
             </p>
+            <Donut
+              segments={[
+                { label: 'White', value: coins.white, color: '#f3ead3' },
+                { label: 'Black', value: coins.black, color: '#6b5d4d' },
+                { label: 'Queen', value: coins.queen, color: '#d7263d' },
+              ]}
+              centerTop={String(total)}
+              centerBottom="pocketed"
+            />
+            <StatGrid
+              stats={[
+                { label: `${rules.playerNames[0]} scoring`, value: accuracyOf(turnLog, 1) },
+                { label: `${rules.playerNames[1]} scoring`, value: accuracyOf(turnLog, 2) },
+                { label: 'Best streak', value: best > 0 ? `${best} shots` : '—' },
+                { label: 'Queen', value: queenHolderOf(turnLog, rules.playerNames) },
+              ]}
+            />
             <div className="btn-row center">
               {!net || net.mySeat === 1 ? (
                 <button className="btn primary" onClick={restart} autoFocus>
@@ -613,6 +648,14 @@ export default function ClassicMode({ playerNames, targetScore, clockSecs, sink,
       </header>
 
       <Toast msg={toast?.msg ?? null} tone={toast?.tone ?? 'info'} />
+
+      <ScoreRace
+        s1={rules.scores[0]}
+        s2={rules.scores[1]}
+        n1={rules.playerNames[0]}
+        n2={rules.playerNames[1]}
+        target={rules.targetScore}
+      />
 
       <main className="layout">
         <div className="board-col">

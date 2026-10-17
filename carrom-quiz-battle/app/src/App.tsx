@@ -3,8 +3,8 @@ import Board, { missMidpoint, nearestPocket, waypointFor, type PocketAnim } from
 import ClassicMode from './components/ClassicMode';
 import { PALETTES } from './game/boardTheme';
 import type { BoardThemeName } from './game/boardTheme';
-import { Confetti, FxLayer, PlayerPanel, QueenBadge, Toast } from './components/Panels';
-import type { Burst, Floater } from './components/Panels';
+import { Confetti, FxLayer, PlayerPanel, QueenBadge, ScoreRace, Toast } from './components/Panels';
+import type { Burst, Floater, TurnEntry } from './components/Panels';
 import QuestionDialog from './components/QuestionDialog';
 import { ResultsScreen, StartScreen } from './components/Screens';
 import { SAMPLE_QUESTIONS } from './data/questions';
@@ -66,11 +66,14 @@ export default function App() {
   const [canResume, setCanResume] = useState(hasSavedGame);
   const [clockSecs, setClockSecs] = useState(30);
   const [timeLeft, setTimeLeft] = useState(30);
+  const [matchClockSecs] = useState(600);
+  const [matchTimeLeft, setMatchTimeLeft] = useState(600);
   const [classic, setClassic] = useState<{ names: [string, string]; target: number } | null>(null);
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [pocketFlash, setPocketFlash] = useState<CoinPos | null>(null);
   const [bursts, setBursts] = useState<Burst[]>([]);
   const [floaters, setFloaters] = useState<Floater[]>([]);
+  const [turnLog, setTurnLog] = useState<TurnEntry[]>([]);
   const toastTimer = useRef<number>(0);
   const expiredRef = useRef(false);
   const fxId = useRef(0);
@@ -132,6 +135,7 @@ export default function App() {
     try {
       const g = createGame({ sessionId: makeId('sess'), playerNames: [p1, p2], targetScore: target });
       setGame(g);
+      setTurnLog([]);
       setPocketAnim(null);
       setPaused(false);
       setError(null);
@@ -182,6 +186,16 @@ export default function App() {
       const res = expireIdleTurn(game);
       setGame(res.state);
       persist(res.state);
+      setTurnLog((l) => [
+        ...l,
+        {
+          player: game.currentPlayer,
+          points: 0,
+          correct: false,
+          coinIds: [],
+          queen: res.events.some((e) => e.eventType === 'coverFailed') ? 'failed' : '',
+        },
+      ]);
       const nextName = res.state.playerNames[res.state.currentPlayer - 1];
       flash(
         res.events.some((e) => e.eventType === 'coverFailed')
@@ -193,6 +207,33 @@ export default function App() {
       /* ignore */
     }
   };
+
+  // Shot clock: reset on every turn/phase change; expiry forfeits the turn.
+  useEffect(() => {
+    setTimeLeft(clockSecs);
+    expiredRef.current = false;
+  }, [game?.phase, game?.currentPlayer, game?.sessionId, clockSecs, game === null]);
+
+  useEffect(() => {
+    if (!game) return;
+    if (game.phase === 'finished') {
+      setMatchTimeLeft(matchClockSecs);
+      return;
+    }
+    if (paused) return;
+    if (matchTimeLeft <= 0) {
+      if (!expiredRef.current) {
+        expiredRef.current = true;
+        sound.tick();
+        setGame(null);
+        flash(`Match time expired!`, 'bad');
+      }
+      return;
+    }
+    if (matchTimeLeft <= 10) sound.tick();
+    const t = window.setTimeout(() => setMatchTimeLeft((v) => v - 1), 1000);
+    return () => window.clearTimeout(t);
+  }, [game?.phase, paused, matchClockSecs, matchTimeLeft, paused]);
 
   // Shot clock: reset on every turn/phase change; expiry forfeits the turn.
   useEffect(() => {
@@ -254,6 +295,16 @@ export default function App() {
       sound.strike();
       setGame(res.state);
       persist(res.state);
+      setTurnLog((l) => [
+        ...l,
+        {
+          player: game.currentPlayer,
+          points: 0,
+          correct: false,
+          coinIds: game.activeCoinId ? [game.activeCoinId] : [],
+          queen: wasCover ? 'failed' : '',
+        },
+      ]);
       if (coin) {
         // Miss animation: the coin slides toward the pocket, veers off, stays in play.
         const from = { ...coin.pos };
@@ -290,6 +341,17 @@ export default function App() {
         setPocketAnim(null);
         setGame(res.state);
         persist(res.state);
+        const failed = res.events.some((e) => e.eventType === 'coverFailed');
+        setTurnLog((l) => [
+          ...l,
+          {
+            player: game.currentPlayer,
+            points: 0,
+            correct: false,
+            coinIds: game.activeCoinId ? [game.activeCoinId] : [],
+            queen: failed ? 'failed' : '',
+          },
+        ]);
       } catch (e) {
         setPocketAnim(null);
         setError(e instanceof Error ? e.message : 'Miss failed');
@@ -302,6 +364,20 @@ export default function App() {
       setPocketAnim(null);
       setGame(res.state);
       persist(res.state);
+      const pocketEv = res.events.find(
+        (e) => e.eventType === 'coinPocketed' || e.eventType === 'coverSecured',
+      );
+      const secured = res.events.some((e) => e.eventType === 'coverSecured');
+      setTurnLog((l) => [
+        ...l,
+        {
+          player: game.currentPlayer,
+          points: res.pointsAwarded,
+          correct: true,
+          coinIds: pocketEv?.coinId ? [pocketEv.coinId] : [],
+          queen: secured ? 'secured' : res.state.queenState === 'pendingCover' ? 'pending' : '',
+        },
+      ]);
       if (target) {
         flashPocket(target);
         spawnBurst(target.x, target.y);
@@ -372,7 +448,7 @@ export default function App() {
     return (
       <div className="app">
         <Confetti pieces={game.winner === 0 ? 30 : 80} />
-        <ResultsScreen game={game} onRestart={restart} />
+        <ResultsScreen game={game} turnLog={turnLog} onRestart={restart} />
         <div className="btn-row center">
           <button className="btn" onClick={() => setGame(null)}>
             Back to menu
@@ -396,7 +472,7 @@ export default function App() {
         </div>
       )}
       <header className="topbar">
-        <h1 className="logo">🎯 Carrom Quiz Battle</h1>
+        <h1 className="logo">♛ Carrom Warfare</h1>
         {(game.phase === 'ready' || game.phase === 'asking') && !paused && (
           <span
             className={`clock-pill${timeLeft <= 5 ? ' low' : ''}`}
@@ -406,6 +482,13 @@ export default function App() {
             ⏱ {timeLeft}s
           </span>
         )}
+        <span
+          className={`match-clock-pill${matchTimeLeft <= 10 ? ' low' : ''}`}
+          role="timer"
+          aria-label={`${matchTimeLeft} seconds left of match`}
+        >
+          ⏱ {Math.max(0, Math.ceil(matchTimeLeft / 60))}:{String(matchTimeLeft % 60).padStart(2, '0')} min
+        </span>
         <div className="top-actions">
           <QueenBadge queenState={game.queenState} />
           <span className="theme-pick" role="radiogroup" aria-label="Board theme">
@@ -434,6 +517,14 @@ export default function App() {
       </header>
 
       <Toast msg={toast?.msg ?? null} tone={toast?.tone ?? 'info'} />
+
+      <ScoreRace
+        s1={game.scores[0]}
+        s2={game.scores[1]}
+        n1={game.playerNames[0]}
+        n2={game.playerNames[1]}
+        target={game.targetScore}
+      />
 
       <main className="layout">
         <div className="board-col">

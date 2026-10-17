@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "appId": "d202983a-b850-40ab-83e0-314f2a90ecee",
-  "appDisplayName": "Carrom Quiz Battle",
+  "appDisplayName": "Carrom Warfare",
   "region": "prod",
   "environmentId": "73f52288-2cbd-e6f3-b14d-6e12b85e8fdb",
   "description": "Two-player quiz carrom battle",

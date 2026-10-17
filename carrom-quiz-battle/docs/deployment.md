@@ -1,4 +1,4 @@
-# Carrom Quiz Battle — Deployment Guide
+# Carrom Warfare — Deployment Guide
 
 ## LIVE (deployed 2026-10-14/15)
 
@@ -17,7 +17,7 @@
 |---|---|
 | Standalone game build + 27 unit tests | ✅ Run green (`carrom-quiz-battle/app`) |
 | SharePoint lists (manual UI, per `sharepoint/MANUAL_SETUP.md`) | ✅ Created by maker, verified via connector metadata read |
-| **Code app `Carrom Quiz Battle` (React 19 + SharePoint connector)** | ✅ **Pushed live, in `CarromBattle` solution** (app id `d202983a-…`) |
+| **Code app `Carrom Warfare` (React 19 + SharePoint connector)** | ✅ **Pushed live, in `CarromBattle` solution** (app id `d202983a-…`) |
 | PCF `CarromQuizBoard` build + push + solution import | ✅ Done (`cb_CarromBattle.CarromQuizBoard`, solution v1.0) |
 | Sync-contract tests (payloads, bridge, idempotency) | ✅ 9 tests green |
 | Canvas App manual assembly | ⏭️ Superseded by the code app (formulas kept as reference) |
@@ -60,7 +60,7 @@ pac pcf push --publisher-prefix cb --solution-name CarromBattle
 
 Or add the built control to a solution in maker portal → Solutions → Add existing → More → Custom control.
 
-## 4. Code app — Carrom Quiz Battle (deployed ✅)
+## 4. Code app — Carrom Warfare (deployed ✅)
 
 The primary app. React 19 + `@microsoft/power-apps` connector services.
 
@@ -87,7 +87,7 @@ Connected `shared_sharepointonline` connection was reused (see `pac connection l
 ## 5. Canvas App (alternative, manual — superseded by the code app)
 
 1. Create blank tablet Canvas App → add SharePoint connector → connect the 4 lists.
-2. Add screens: `scrSetup` (names/target inputs), `scrBoard` (insert **Carrom Quiz Battle** custom control as `ctlBoard`), `scrResults`.
+2. Add screens: `scrSetup` (names/target inputs), `scrBoard` (insert **Carrom Warfare** custom control as `ctlBoard`), `scrResults`.
 3. Paste formulas from `canvas-app/powerfx-carrom.ts`: `App.OnStart`, control bindings, `ctlBoard.OnChange`, results labels.
 4. Play-test: correct pockets one coin; wrong passes turn; Queen cover; airplane-mode mid-game shows `VarSyncError` banner + Retry works.
 5. File → Save → Publish. Share with players (SharePoint auth comes from the connector — **no secrets in code**).

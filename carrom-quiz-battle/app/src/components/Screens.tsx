@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { GameState } from '../game/types';
+import { Donut, StatGrid } from './Panels';
+import type { TurnEntry } from './Panels';
+import { accuracyOf, bestStreakOf, coinsByColor, queenHolderOf } from './Panels';
 
 const RAIN_COLORS = ['#ffd54a', '#d7263d', '#f7f1e3', '#ff8ba0'];
 
@@ -58,7 +61,7 @@ export function StartScreen({
       <div className="hero-premium">
         <CoinRain />
         <div className="hero-kicker">TWO PLAYERS · ONE BOARD</div>
-        <h1 className="hero-title">Carrom Quiz Battle</h1>
+        <h1 className="hero-title">Carrom Warfare</h1>
         <p className="hero-sub">Pocket coins with your brain — or your flick. Quiz brains meet carrom hands.</p>
         <div className="stat-chips" aria-label="Game highlights">
           <span className="stat-chip">🎯 Quiz + 🎲 Flick modes</span>
@@ -157,12 +160,23 @@ export function StartScreen({
   );
 }
 
-export function ResultsScreen({ game, onRestart }: { game: GameState; onRestart: () => void }) {
+export function ResultsScreen({
+  game,
+  turnLog,
+  onRestart,
+}: {
+  game: GameState;
+  turnLog: TurnEntry[];
+  onRestart: () => void;
+}) {
   const [s1, s2] = game.scores;
   const title =
     game.winner === 0
       ? 'A hard-fought draw!'
       : `🏆 ${game.winner === 1 ? game.playerNames[0] : game.playerNames[1]} wins!`;
+  const coins = coinsByColor(turnLog);
+  const total = coins.white + coins.black + coins.queen;
+  const best = Math.max(bestStreakOf(turnLog, 1), bestStreakOf(turnLog, 2));
   return (
     <div className="screen">
       <div className="card results">
@@ -170,6 +184,23 @@ export function ResultsScreen({ game, onRestart }: { game: GameState; onRestart:
         <p className="final-score">
           {game.playerNames[0]} <strong>{s1}</strong> — <strong>{s2}</strong> {game.playerNames[1]}
         </p>
+        <Donut
+          segments={[
+            { label: 'White', value: coins.white, color: '#f3ead3' },
+            { label: 'Black', value: coins.black, color: '#6b5d4d' },
+            { label: 'Queen', value: coins.queen, color: '#d7263d' },
+          ]}
+          centerTop={String(total)}
+          centerBottom="pocketed"
+        />
+        <StatGrid
+          stats={[
+            { label: `${game.playerNames[0]} accuracy`, value: accuracyOf(turnLog, 1) },
+            { label: `${game.playerNames[1]} accuracy`, value: accuracyOf(turnLog, 2) },
+            { label: 'Best streak', value: best > 0 ? `${best} pockets` : '—' },
+            { label: 'Queen', value: queenHolderOf(turnLog, game.playerNames) },
+          ]}
+        />
         <p className="muted">
           Queen: {game.queenState === 'secured' ? `secured by Player ${game.queenPocketedBy}` : game.queenState}
           {' · '}Target was {game.targetScore}

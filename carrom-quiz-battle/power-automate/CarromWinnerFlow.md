@@ -34,7 +34,7 @@ bookkeeping + announcement, off the critical turn path.
    - Expression sketch: `if(not(equals(outputs('P1'), outputs('P2'))), if(greater(outputs('P1'), outputs('P2')), 1, 2), if(equals(length(body('List_cover_events')?['value']), 1), first(body('List_cover_events')?['value'])?['PlayerNumber'], 0))`
 4. **Update item** — set `Winner`, `CompletedAt = utcNow()`, `WinnerComputed = true`.
 5. **Announce** — Post in Teams / send mail:
-   `🏆 <WinnerName> won Carrom Quiz Battle <P1>–<P2>!` (draw → 🤝 message).
+   `🏆 <WinnerName> won Carrom Warfare <P1>–<P2>!` (draw → 🤝 message).
 
 ## Failure handling
 
